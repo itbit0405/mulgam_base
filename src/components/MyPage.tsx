@@ -23,11 +23,26 @@ export default function MyPage({ currentUser, onUpdateUser, notifications, onAdd
   const [newNickname, setNewNickname] = useState(currentUser.nickname);
   const [isApplyingArtist, setIsApplyingArtist] = useState(false);
   
+  const isRealKakaoUser = currentUser && currentUser.id.startsWith('kakao-');
+  const [customSerialInput, setCustomSerialInput] = useState('ART-1004');
+  const [selectedNfcArtistState, setSelectedNfcArtistState] = useState<ArtistMock>(artists[0] || MOCK_ARTISTS[0]);
+
   // NFC Tagging Simulator Modal state for users
   const [isNfcModalOpen, setIsNfcModalOpen] = useState(false);
   const [nfcTaggingState, setNfcTaggingState] = useState<'idle' | 'scanning' | 'success'>('idle');
-  const [selectedNfcArtist, setSelectedNfcArtist] = useState<ArtistMock>(artists[0] || MOCK_ARTISTS[0]);
   const [justLinkedArtist, setJustLinkedArtist] = useState<ArtistMock | null>(null);
+
+  const selectedNfcArtist = isRealKakaoUser
+    ? (artists.find(a => a.serialNumber.trim().toUpperCase() === customSerialInput.trim().toUpperCase()) || {
+        name: `인증 작가 (${customSerialInput.trim().toUpperCase()})`,
+        serialNumber: customSerialInput.trim().toUpperCase(),
+        profileImage: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=150&q=80',
+        instagramUrl: 'https://instagram.com',
+        webpageUrl: 'https://myportfolio.com',
+        description: '실물 NFC 카드로 인식된 정식 일러스트레이터입니다.',
+        recentExhibitions: []
+      })
+    : selectedNfcArtistState;
 
   // Artist Application Form state
   const [instagramInput, setInstagramInput] = useState('');
@@ -864,34 +879,51 @@ export default function MyPage({ currentUser, onUpdateUser, notifications, onAdd
                       {/* 1. Select card */}
                       <div className="space-y-2">
                         <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                          1. 태깅할 아티스트의 실물 카드 선택
+                          {isRealKakaoUser ? "1. 실물 NFC 카드 일련번호 입력" : "1. 태깅할 아티스트의 실물 카드 선택"}
                         </label>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          {artists.map((artist) => {
-                            const isSelected = selectedNfcArtist.serialNumber === artist.serialNumber;
-                            return (
-                              <button
-                                key={artist.serialNumber}
-                                type="button"
-                                onClick={() => setSelectedNfcArtist(artist)}
-                                className={`flex flex-col items-center p-3 rounded-2xl text-center border transition-all ${
-                                  isSelected
-                                    ? 'border-indigo-500 bg-indigo-50/40 text-indigo-950 font-bold'
-                                    : 'border-gray-100 hover:border-gray-200 text-gray-600'
-                                }`}
-                              >
-                                <img
-                                  src={artist.profileImage}
-                                  alt={artist.name}
-                                  className="h-10 w-10 rounded-xl object-cover border border-black/5 mb-1.5"
-                                  referrerPolicy="no-referrer"
-                                />
-                                <span className="text-[10px] font-mono tracking-wider font-semibold opacity-75">{artist.serialNumber}</span>
-                                <span className="text-xs truncate max-w-[100px] mt-0.5 leading-tight font-bold">{artist.name.split('(')[0]}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
+                        {isRealKakaoUser ? (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              value={customSerialInput}
+                              onChange={(e) => setCustomSerialInput(e.target.value)}
+                              placeholder="예: ART-1004"
+                              className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-bold font-mono text-center tracking-widest bg-gray-50 uppercase"
+                              id="nfc-custom-serial-input"
+                            />
+                            <p className="text-[10px] text-gray-400 leading-normal text-center font-medium">
+                              실물 NFC 카드의 일련번호를 직접 입력하여 가상 태그할 수 있습니다.<br />
+                              실제 사용자 계정이므로, 리스트에 등록된 데모 아티스트 목록은 숨김 처리됩니다.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            {artists.map((artist) => {
+                              const isSelected = selectedNfcArtist.serialNumber === artist.serialNumber;
+                              return (
+                                <button
+                                  key={artist.serialNumber}
+                                  type="button"
+                                  onClick={() => setSelectedNfcArtistState(artist)}
+                                  className={`flex flex-col items-center p-3 rounded-2xl text-center border transition-all ${
+                                    isSelected
+                                      ? 'border-indigo-500 bg-indigo-50/40 text-indigo-950 font-bold'
+                                      : 'border-gray-100 hover:border-gray-200 text-gray-600'
+                                  }`}
+                                >
+                                  <img
+                                    src={artist.profileImage}
+                                    alt={artist.name}
+                                    className="h-10 w-10 rounded-xl object-cover border border-black/5 mb-1.5"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                  <span className="text-[10px] font-mono tracking-wider font-semibold opacity-75">{artist.serialNumber}</span>
+                                  <span className="text-xs truncate max-w-[100px] mt-0.5 leading-tight font-bold">{artist.name.split('(')[0]}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
 
                       {/* 2. Visual Card display & Action */}

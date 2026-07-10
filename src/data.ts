@@ -181,9 +181,9 @@ const fillMockData = () => {
   const currentUsers = INITIAL_ALL_USERS.filter(u => u.role === 'user');
   const currentArtists = INITIAL_ALL_USERS.filter(u => u.role === 'artist');
 
-  // Fill users to 100
+  // Fill users to 10
   let userIndex = 1;
-  while (INITIAL_ALL_USERS.filter(u => u.role === 'user').length < 100) {
+  while (INITIAL_ALL_USERS.filter(u => u.role === 'user').length < 10) {
     const lastName = lastNames[userIndex % lastNames.length];
     const firstName = userFirstNames[userIndex % userFirstNames.length];
     const nickname = `${lastName}${firstName}${userIndex}`;
@@ -204,9 +204,10 @@ const fillMockData = () => {
     userIndex++;
   }
 
-  // Fill artists to 50
+  // No auto-generated mock artists (0 extra artists)
+  // This keeps the certified artist lists clean as requested by the user
   let artistIndex = 1;
-  while (INITIAL_ALL_USERS.filter(u => u.role === 'artist').length < 50) {
+  while (INITIAL_ALL_USERS.filter(u => u.role === 'artist').length < 0) {
     const lastName = lastNames[artistIndex % lastNames.length];
     const firstName = artistFirstNames[artistIndex % artistFirstNames.length];
     const nickname = `${lastName}${firstName}${artistIndex}`;

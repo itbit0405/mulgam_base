@@ -253,6 +253,22 @@ export default function App() {
     if (savedAllUsers) {
       try {
         loadedUsers = JSON.parse(savedAllUsers);
+        
+        // Clean up any old generated mock artists/users if they exist in localStorage (e.g. mock_artist_gen_)
+        const hasOldMockArtists = loadedUsers.some(u => u.id && (u.id.startsWith('mock_artist_gen_') || u.id.startsWith('mock_user_gen_')));
+        if (hasOldMockArtists) {
+          loadedUsers = loadedUsers.filter(u => !u.id.startsWith('mock_artist_gen_') && !u.id.startsWith('mock_user_gen_'));
+          // Merge with INITIAL_ALL_USERS
+          const merged = [...loadedUsers];
+          for (const u of INITIAL_ALL_USERS) {
+            if (!merged.some(m => m.id === u.id)) {
+              merged.push(u);
+            }
+          }
+          loadedUsers = merged;
+          localStorage.setItem('nfc_platform_all_users', JSON.stringify(loadedUsers));
+        }
+        
         setUsersList(loadedUsers);
       } catch (e) {
         console.error('Error parsing saved all users', e);
@@ -267,6 +283,12 @@ export default function App() {
     if (savedUser) {
       try {
         const parsed = JSON.parse(savedUser);
+        
+        // Clean up favorite artists if they contain old mock serials starting with ART-3
+        if (parsed.favoriteArtists) {
+          parsed.favoriteArtists = parsed.favoriteArtists.filter((serial: string) => !serial.startsWith('ART-3'));
+        }
+        
         const matched = loadedUsers.find(u => u.id === parsed.id);
         const active = matched || parsed;
         setCurrentUser(active);

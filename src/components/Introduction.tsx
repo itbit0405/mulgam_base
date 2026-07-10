@@ -155,21 +155,23 @@ export default function Introduction({ currentUser, onAddArtist, onOpenLogin, on
       </div>
 
       {/* Embedded NFC Interactive Simulator */}
-      <div className="space-y-6">
-        <div className="text-center max-w-xl mx-auto">
-          <h2 className="text-2xl font-extrabold text-gray-950 font-sans">지금 직접 태그해 보세요</h2>
-          <p className="text-sm text-gray-500 mt-2 font-sans font-medium">
-            실제 태깅 시나리오가 어떻게 작동하는지 체험해 보실 수 있습니다.<br />
-            태깅하면 나의 관심 작가 리스트에 즉시 축적됩니다.
-          </p>
+      {!(currentUser && currentUser.id.startsWith('kakao-')) && (
+        <div className="space-y-6">
+          <div className="text-center max-w-xl mx-auto">
+            <h2 className="text-2xl font-extrabold text-gray-950 font-sans">지금 직접 태그해 보세요</h2>
+            <p className="text-sm text-gray-500 mt-2 font-sans font-medium">
+              실제 태깅 시나리오가 어떻게 작동하는지 체험해 보실 수 있습니다.<br />
+              태깅하면 나의 관심 작가 리스트에 즉시 축적됩니다.
+            </p>
+          </div>
+          <NfcTagSimulator
+            currentUser={currentUser}
+            onAddArtist={onAddArtist}
+            onOpenLogin={onOpenLogin}
+            artists={artists}
+          />
         </div>
-        <NfcTagSimulator
-          currentUser={currentUser}
-          onAddArtist={onAddArtist}
-          onOpenLogin={onOpenLogin}
-          artists={artists}
-        />
-      </div>
+      )}
 
       {/* How It Works - Step-by-Step */}
       <div className="space-y-10">
