@@ -34,6 +34,85 @@ export default function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [notifications, setNotifications] = useState<ExhibitionNotification[]>(INITIAL_NOTIFICATIONS);
   const [pendingNfcTag, setPendingNfcTag] = useState<string | null>(null);
+  const [oauthProcessing, setOauthProcessing] = useState(false);
+  const [oauthError, setOauthError] = useState<string | null>(null);
+
+  // Handle client-side OAuth callback (e.g. on Vercel at /oauth or locally/container at /auth/callback)
+  useEffect(() => {
+    const isOauthPath = window.location.pathname.includes('/oauth') || window.location.pathname.includes('/auth/callback');
+    if (!isOauthPath) return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    if (!code) return;
+
+    const processOauth = async () => {
+      setOauthProcessing(true);
+      try {
+        const backendUrl = window.location.origin.includes('vercel.app')
+          ? 'https://ais-pre-tnsbfut3hefguantpepxav-541849461180.asia-northeast1.run.app'
+          : window.location.origin;
+
+        const redirectUri = window.location.origin.includes('vercel.app')
+          ? 'https://mulgam-lovat.vercel.app/oauth'
+          : `${window.location.origin}/auth/callback`;
+
+        console.log('Sending oauth exchange to backend:', backendUrl, 'with code:', code, 'and redirect_uri:', redirectUri);
+
+        const res = await fetch(`${backendUrl}/api/auth/kakao/exchange`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ code, redirectUri }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.details || errData.error || '토큰 교환 실패');
+        }
+
+        const data = await res.json();
+        if (data.success && data.user) {
+          const loggedInUser = data.user;
+          
+          // Save locally
+          localStorage.setItem('nfc_platform_user', JSON.stringify(loggedInUser));
+          
+          if (window.opener) {
+            // Post message back to parent window
+            window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', user: loggedInUser }, '*');
+            window.close();
+          } else {
+            // Full screen navigation flow
+            setCurrentUser(loggedInUser);
+            // Sync with all users list if needed
+            const savedAllUsersStr = localStorage.getItem('nfc_platform_all_users') || '[]';
+            let allUsersList: User[] = [];
+            try {
+              allUsersList = JSON.parse(savedAllUsersStr);
+            } catch (e) {}
+            if (!allUsersList.some(u => u.id === loggedInUser.id)) {
+              allUsersList.push(loggedInUser);
+              localStorage.setItem('nfc_platform_all_users', JSON.stringify(allUsersList));
+              setUsersList(allUsersList);
+            }
+            setOauthProcessing(false);
+            // Navigate to mypage!
+            setActiveTab('mypage');
+            // Clean URL query
+            window.history.replaceState({}, document.title, '/');
+          }
+        }
+      } catch (err: any) {
+        console.error('OAuth processing error:', err);
+        setOauthError(err.message || '로그인 처리 중 오류가 발생했습니다.');
+        setOauthProcessing(false);
+      }
+    };
+
+    processOauth();
+  }, []);
 
   // Check for NFC landing tag parameters in URL
   useEffect(() => {
@@ -202,8 +281,43 @@ export default function App() {
     localStorage.setItem('nfc_platform_notifications', JSON.stringify(updatedNotis));
   };
 
+  if (oauthProcessing) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 font-sans">
+        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center border border-slate-100 flex flex-col items-center">
+          <div className="h-16 w-16 bg-[#FEE500]/10 rounded-2xl flex items-center justify-center mb-5 animate-pulse">
+            <svg className="h-8 w-8 fill-[#3A1D1D]" viewBox="0 0 24 24">
+              <path d="M12 3c-4.97 0-9 3.185-9 7.115 0 2.557 1.707 4.8 4.316 6.007-.173.647-.624 2.338-.713 2.695-.11.439.162.433.342.313.14-.093 2.228-1.503 3.125-2.112.637.11 1.298.17 1.93.17 4.97 0 9-3.185 9-7.115S16.97 3 12 3z" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-extrabold text-slate-800 mb-2">카카오 로그인 연동 중</h2>
+          <p className="text-sm text-slate-500 leading-relaxed mb-6">
+            안전하게 내 카카오 계정 정보를 연동하고 있습니다. 잠시만 기다려 주세요.
+          </p>
+          <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs">
+            <RefreshCw className="h-4 w-4 animate-spin text-indigo-500" />
+            <span>카카오 서버와 통신 중...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F9FAFB] text-gray-900 flex flex-col font-sans selection:bg-indigo-100 selection:text-indigo-950" id="application-root-container">
+      {/* OAuth Error Alert overlay if any */}
+      {oauthError && (
+        <div className="bg-red-500 text-white text-xs py-3 px-4 text-center font-semibold flex items-center justify-center gap-2 relative z-50 animate-bounce">
+          <span>⚠️ {oauthError}</span>
+          <button 
+            onClick={() => setOauthError(null)} 
+            className="bg-black/20 hover:bg-black/30 text-white px-2 py-0.5 rounded text-[10px] font-bold"
+          >
+            닫기
+          </button>
+        </div>
+      )}
+
       {/* Dynamic Announcement banner */}
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs py-2 px-4 text-center font-semibold tracking-wide" id="global-announcement">
         📢 오프라인 아트 페어 개막! 스마트 부스에서 실물 NFC 작가 카드를 만나보세요.

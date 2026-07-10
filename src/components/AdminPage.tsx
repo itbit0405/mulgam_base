@@ -186,13 +186,14 @@ export default function AdminPage({ currentUser, usersList, onUpdateUsersList, o
   };
 
   // Statistics calculations
-  const totalUsers = usersList.length;
-  const regularUsersCount = usersList.filter(u => u.role === 'user').length;
-  const verifiedArtistsCount = usersList.filter(u => u.role === 'artist').length;
-  const pendingArtistsCount = usersList.filter(u => u.role === 'artist_pending').length;
+  const nonAdminUsersList = usersList.filter(u => u.role !== 'admin');
+  const totalUsers = nonAdminUsersList.length;
+  const regularUsersCount = nonAdminUsersList.filter(u => u.role === 'user').length;
+  const verifiedArtistsCount = nonAdminUsersList.filter(u => u.role === 'artist').length;
+  const pendingArtistsCount = nonAdminUsersList.filter(u => u.role === 'artist_pending').length;
 
   // Filters and queries
-  const filteredUsers = usersList.filter(u => {
+  const filteredUsers = nonAdminUsersList.filter(u => {
     const matchesSearch = 
       u.nickname.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -202,7 +203,7 @@ export default function AdminPage({ currentUser, usersList, onUpdateUsersList, o
     return matchesSearch && u.role === roleFilter;
   });
 
-  const pendingUsers = usersList.filter(u => u.role === 'artist_pending');
+  const pendingUsers = nonAdminUsersList.filter(u => u.role === 'artist_pending');
 
   return (
     <div className="py-8 max-w-7xl mx-auto space-y-8 font-sans" id="admin-page-container">
@@ -242,11 +243,11 @@ export default function AdminPage({ currentUser, usersList, onUpdateUsersList, o
             <p className="text-2xl font-extrabold text-emerald-600">{verifiedArtistsCount}명</p>
           </div>
 
-          <div className="rounded-2xl border border-purple-100 bg-purple-50/20 p-4 space-y-1 relative overflow-hidden">
-            <div className="absolute -right-1 -top-1 h-6 w-6 bg-red-500 text-[10px] font-extrabold text-white flex items-center justify-center rounded-full animate-bounce shadow">
+          <div className="rounded-2xl border border-purple-100 bg-purple-50/20 p-4 space-y-1 relative">
+            <div className="absolute right-3 top-3 h-6 w-6 bg-red-500 text-[10px] font-extrabold text-white flex items-center justify-center rounded-full animate-bounce shadow">
               {pendingArtistsCount}
             </div>
-            <span className="text-[10px] font-bold text-purple-500 uppercase tracking-wider">작가 승인 대기</span>
+            <span className="text-[10px] font-bold text-purple-500 uppercase tracking-wider block pr-6">작가 승인 대기</span>
             <p className="text-2xl font-extrabold text-purple-700">{pendingArtistsCount}건</p>
           </div>
         </div>

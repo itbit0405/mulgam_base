@@ -20,7 +20,7 @@ export default function AppDownload() {
           </span>
           <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight">
             내 손안의 작은 갤러리,<br />
-            NFC ART LINK 앱을 만나보세요
+            mulgam 앱을 만나보세요
           </h2>
           <p className="text-sm sm:text-base text-slate-300 font-sans leading-relaxed">
             이제 무거운 도록이나 스케줄러 대신 스마트폰 하나로 전시회를 가볍게 기억하세요. 
@@ -64,7 +64,7 @@ export default function AppDownload() {
             
             {/* Screen top */}
             <div className="flex justify-between items-center text-[10px] font-mono text-slate-400 mt-2 px-1 z-10">
-              <span>NFC LINK</span>
+              <span>mulgam</span>
               <span>10:04 AM</span>
             </div>
 
@@ -74,7 +74,7 @@ export default function AppDownload() {
                 <Smartphone className="h-8 w-8" />
               </div>
               <div className="space-y-1">
-                <h4 className="text-sm font-bold text-white">NFC ART LINK</h4>
+                <h4 className="text-sm font-bold text-white">mulgam</h4>
                 <p className="text-[10px] text-slate-400">일러스트 컬렉터를 위한 홈</p>
               </div>
               <div className="w-full bg-slate-900/80 rounded-xl p-2.5 border border-white/5 space-y-1 text-left">
