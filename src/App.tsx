@@ -477,8 +477,8 @@ export default function App() {
       {/* Global Footer */}
       <footer className="bg-white border-t border-gray-100 py-8 mt-12 text-center text-xs text-gray-400 font-sans" id="global-footer">
         <div className="max-w-7xl mx-auto px-4 space-y-2">
-          <p className="font-bold text-gray-500">© 2026 mulgam Corp. All rights reserved.</p>
-          <p>고객지원: support@mulgam.com | 제휴문의: partner@mulgam.com</p>
+          <p className="font-bold text-gray-500">© 2026 ITBIT. All rights reserved.</p>
+          <p>고객지원: itbit.co.kr@gmail.com | 제휴문의: itbit.co.kr@gmail.com</p>
           <p className="text-[10px] opacity-75">본 플랫폼은 데모 디자인 시연용으로 작동하며 데이터는 로컬 브라우저 세션에 안전하게 임시 보관됩니다.</p>
         </div>
       </footer>
