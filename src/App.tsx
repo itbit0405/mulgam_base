@@ -57,25 +57,88 @@ export default function App() {
           ? 'https://mulgam-lovat.vercel.app/oauth'
           : `${window.location.origin}/auth/callback`;
 
-        console.log('Sending oauth exchange to backend:', backendUrl, 'with code:', code, 'and redirect_uri:', redirectUri);
+        console.log('Processing Kakao OAuth callback. Code:', code, 'Redirect URI:', redirectUri);
 
-        const res = await fetch(`${backendUrl}/api/auth/kakao/exchange`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ code, redirectUri }),
-        });
+        let loggedInUser: User | null = null;
 
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.details || errData.error || '토큰 교환 실패');
+        // Perform client-side token exchange on Vercel to completely avoid CORS issues with the private backend
+        const isVercel = window.location.origin.includes('vercel.app');
+        if (isVercel) {
+          try {
+            console.log('Vercel environment detected. Initiating client-side Kakao OAuth exchange...');
+            const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+              },
+              body: new URLSearchParams({
+                grant_type: 'authorization_code',
+                client_id: 'bec6867f03cfcf7a7b0b8adeb8376f98',
+                redirect_uri: redirectUri,
+                code: code,
+              }),
+            });
+
+            if (!tokenResponse.ok) {
+              const errText = await tokenResponse.text();
+              throw new Error(`Token exchange failed: ${errText}`);
+            }
+
+            const tokenData = await tokenResponse.json() as any;
+            const accessToken = tokenData.access_token;
+
+            console.log('Retrieving Kakao user profile on client side...');
+            const profileResponse = await fetch('https://kapi.kakao.com/v2/user/me', {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            });
+
+            if (!profileResponse.ok) {
+              const errText = await profileResponse.text();
+              throw new Error(`User profile fetch failed: ${errText}`);
+            }
+
+            const profileData = await profileResponse.json() as any;
+
+            loggedInUser = {
+              id: `kakao-${profileData.id}`,
+              nickname: profileData.properties?.nickname || profileData.kakao_account?.profile?.nickname || '카카오 사용자',
+              profileImage: profileData.properties?.profile_image || profileData.kakao_account?.profile?.profile_image_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
+              email: profileData.kakao_account?.email || `${profileData.id}@kakao.com`,
+              role: 'user',
+              favoriteArtists: [],
+              fanUsers: []
+            };
+            console.log('Client-side login successful:', loggedInUser);
+          } catch (clientErr) {
+            console.error('Client-side exchange failed, falling back to backend:', clientErr);
+          }
         }
 
-        const data = await res.json();
-        if (data.success && data.user) {
-          const loggedInUser = data.user;
+        // If client-side exchange didn't run or failed, fallback to backend exchange
+        if (!loggedInUser) {
+          console.log('Attempting backend OAuth exchange...', backendUrl);
+          const res = await fetch(`${backendUrl}/api/auth/kakao/exchange`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ code, redirectUri }),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.details || errData.error || '토큰 교환 실패');
+          }
+
+          const data = await res.json();
+          if (data.success && data.user) {
+            loggedInUser = data.user;
+          }
+        }
           
+        if (loggedInUser) {
           // Save locally
           localStorage.setItem('nfc_platform_user', JSON.stringify(loggedInUser));
           

@@ -69,17 +69,17 @@ export default function KakaoLoginModal({ isOpen, onClose, onLoginSuccess }: Kak
   const handleRealKakaoLogin = async () => {
     try {
       setIsLoggingIn(false); // Reset just in case
-      const backendUrl = window.location.origin.includes('vercel.app')
-        ? 'https://ais-pre-tnsbfut3hefguantpepxav-541849461180.asia-northeast1.run.app'
-        : window.location.origin;
-
       const redirectUri = window.location.origin.includes('vercel.app')
         ? 'https://mulgam-lovat.vercel.app/oauth'
         : `${window.location.origin}/auth/callback`;
 
-      const res = await fetch(`${backendUrl}/api/auth/kakao/url?origin=${encodeURIComponent(window.location.origin)}&redirect_uri=${encodeURIComponent(redirectUri)}`);
-      if (!res.ok) throw new Error('API failed');
-      const { url } = await res.json();
+      // Construct Kakao authorize URL directly on client-side to prevent CORS/redirect issues
+      const params = new URLSearchParams({
+        client_id: 'bec6867f03cfcf7a7b0b8adeb8376f98',
+        redirect_uri: redirectUri,
+        response_type: 'code',
+      });
+      const url = `https://kauth.kakao.com/oauth/authorize?${params.toString()}`;
 
       const width = 500;
       const height = 650;
@@ -99,7 +99,7 @@ export default function KakaoLoginModal({ isOpen, onClose, onLoginSuccess }: Kak
       }
     } catch (err) {
       console.error(err);
-      alert('카카오 로그인 URL을 가져오는 데 실패했습니다.');
+      alert('카카오 로그인 창을 여는 데 실패했습니다.');
     }
   };
 
