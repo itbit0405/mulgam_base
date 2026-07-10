@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { User, ArtistMock, ExhibitionNotification } from '../types';
 import { MOCK_ARTISTS, MOCK_USER_FANS } from '../data';
+import { isSupabaseConfigured, submitWriterApplication, toggleFavoriteWriter } from '../supabaseClient';
 
 interface MyPageProps {
   currentUser: User;
@@ -72,13 +73,23 @@ export default function MyPage({ currentUser, onUpdateUser, notifications, onAdd
     setNfcTaggingState('scanning');
     setJustLinkedArtist(null);
     
-    setTimeout(() => {
+    setTimeout(async () => {
       // Add favorite artist if not already there
       if (!currentUser.favoriteArtists.includes(selectedNfcArtist.serialNumber)) {
         onUpdateUser({
           ...currentUser,
           favoriteArtists: [...currentUser.favoriteArtists, selectedNfcArtist.serialNumber]
         });
+
+        // Sync favorite addition to Supabase if configured
+        if (isSupabaseConfigured) {
+          try {
+            await toggleFavoriteWriter(currentUser.id, selectedNfcArtist.serialNumber, 'nfc_tag');
+            console.log('Successfully saved NFC favorite tag to Supabase FAVORITES table.');
+          } catch (e) {
+            console.error('Failed to save NFC favorite to Supabase:', e);
+          }
+        }
       }
       setJustLinkedArtist(selectedNfcArtist);
       setNfcTaggingState('success');
@@ -148,9 +159,26 @@ export default function MyPage({ currentUser, onUpdateUser, notifications, onAdd
   };
 
   // 5. Submit Artist Application -> Set to artist_pending so the admin can approve!
-  const handleArtistSubmit = (e: FormEvent) => {
+  const handleArtistSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmittingApp(true);
+
+    if (isSupabaseConfigured) {
+      try {
+        const dbFiles = appFiles.map(file => ({
+          file_type: file.type,
+          file_url: file.url
+        }));
+        await submitWriterApplication(
+          currentUser.id,
+          'NFC 카드로 독자들과 소통하고 소식을 보낼 정식 승인 일러스트레이터 지망 작가입니다.',
+          dbFiles
+        );
+        console.log('Successfully saved artist application to Supabase.');
+      } catch (err) {
+        console.error('Failed to submit artist application to Supabase:', err);
+      }
+    }
 
     setTimeout(() => {
       onUpdateUser({
@@ -171,12 +199,21 @@ export default function MyPage({ currentUser, onUpdateUser, notifications, onAdd
   };
 
   // 6. Handle Unfavoriting an Artist
-  const handleUnfavoriteArtist = (serialNumber: string) => {
+  const handleUnfavoriteArtist = async (serialNumber: string) => {
     const filtered = currentUser.favoriteArtists.filter(s => s !== serialNumber);
     onUpdateUser({
       ...currentUser,
       favoriteArtists: filtered
     });
+
+    if (isSupabaseConfigured) {
+      try {
+        await toggleFavoriteWriter(currentUser.id, serialNumber, 'web');
+        console.log('Successfully toggled favorite off in Supabase.');
+      } catch (e) {
+        console.error('Failed to toggle favorite off in Supabase:', e);
+      }
+    }
   };
 
   // 7. Broadcast exhibition notification

@@ -14,6 +14,7 @@ import AdminPage from './components/AdminPage';
 import KakaoLoginModal from './components/KakaoLoginModal';
 import StateController from './components/StateController';
 import { INITIAL_ALL_USERS, MOCK_ARTISTS } from './data';
+import { isSupabaseConfigured, upsertProfile, getProfileByKakaoId } from './supabaseClient';
 
 const INITIAL_NOTIFICATIONS: ExhibitionNotification[] = [
   {
@@ -142,6 +143,20 @@ export default function App() {
           // Save locally
           localStorage.setItem('nfc_platform_user', JSON.stringify(loggedInUser));
           
+          // Upsert user profile into Supabase on successful authentication
+          if (isSupabaseConfigured) {
+            try {
+              await upsertProfile({
+                kakao_id: loggedInUser.id,
+                nickname: loggedInUser.nickname,
+                role: loggedInUser.role
+              });
+              console.log('Successfully synced login user profile to Supabase.');
+            } catch (sbErr) {
+              console.error('Failed to sync login user profile to Supabase:', sbErr);
+            }
+          }
+          
           if (window.opener) {
             // Post message back to parent window
             window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', user: loggedInUser }, '*');
@@ -246,7 +261,23 @@ export default function App() {
       try {
         const parsed = JSON.parse(savedUser);
         const matched = loadedUsers.find(u => u.id === parsed.id);
-        setCurrentUser(matched || parsed);
+        const active = matched || parsed;
+        setCurrentUser(active);
+
+        // Auto-sync fresh profile from Supabase if configured
+        if (isSupabaseConfigured) {
+          getProfileByKakaoId(active.id).then(sbProfile => {
+            if (sbProfile) {
+              const updatedUser: User = {
+                ...active,
+                nickname: sbProfile.nickname || active.nickname,
+                role: sbProfile.role as any || active.role,
+              };
+              setCurrentUser(updatedUser);
+              localStorage.setItem('nfc_platform_user', JSON.stringify(updatedUser));
+            }
+          }).catch(err => console.error('Supabase auto-sync on mount failed:', err));
+        }
       } catch (e) {
         console.error('Error parsing saved user', e);
       }
@@ -295,6 +326,15 @@ export default function App() {
       }
       setUsersList(updatedList);
       localStorage.setItem('nfc_platform_all_users', JSON.stringify(updatedList));
+
+      // Asynchronously sync profile changes with Supabase if configured
+      if (isSupabaseConfigured) {
+        upsertProfile({
+          kakao_id: updatedUser.id,
+          nickname: updatedUser.nickname,
+          role: updatedUser.role
+        }).catch(err => console.error('Failed to sync updated user to Supabase:', err));
+      }
     } else {
       localStorage.removeItem('nfc_platform_user');
       // If logging out, force transition back to intro

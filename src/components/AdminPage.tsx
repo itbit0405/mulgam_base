@@ -5,6 +5,7 @@ import {
   CheckCircle2, AlertTriangle, ExternalLink, Instagram, Link, FileText, Sparkles, RefreshCw
 } from 'lucide-react';
 import { User, ArtistMock } from '../types';
+import { isSupabaseConfigured, getWriterApplications, approveWriterApplication } from '../supabaseClient';
 
 interface AdminPageProps {
   currentUser: User;
@@ -110,8 +111,33 @@ export default function AdminPage({ currentUser, usersList, onUpdateUsersList, o
   };
 
   // 5. Complete Artist Approval
-  const handleApproveArtist = () => {
+  const handleApproveArtist = async () => {
     if (!approvingUser) return;
+
+    if (isSupabaseConfigured) {
+      try {
+        const apps = await getWriterApplications();
+        const matchedApp = apps.find((app: any) => app.user_id === approvingUser.id && app.status === 'pending');
+        if (matchedApp) {
+          await approveWriterApplication(matchedApp.id, approvingUser.id, generatedSerial, currentUser.id);
+          console.log('Successfully approved writer application in Supabase.');
+        } else {
+          // Fallback if no formal application existed but admin promoted them
+          const { supabase } = await import('../supabaseClient');
+          if (supabase) {
+            await supabase.from('WRITERS').upsert({
+              id: approvingUser.id,
+              serial_number: generatedSerial,
+              approved_at: new Date().toISOString()
+            });
+            await supabase.from('PROFILES').update({ role: 'artist' }).eq('kakao_id', approvingUser.id);
+            console.log('Directly promoted and synced artist to Supabase.');
+          }
+        }
+      } catch (err) {
+        console.error('Failed to sync artist approval with Supabase:', err);
+      }
+    }
 
     const updated = usersList.map(u => {
       if (u.id === approvingUser.id) {
