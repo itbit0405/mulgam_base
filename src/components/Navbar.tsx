@@ -5,8 +5,8 @@ import { User } from '../types';
 
 interface NavbarProps {
   currentUser: User | null;
-  activeTab: 'intro' | 'download' | 'mypage' | 'admin';
-  setActiveTab: (tab: 'intro' | 'download' | 'mypage' | 'admin') => void;
+  activeTab: 'intro' | 'download' | 'mypage' | 'admin' | 'admin_users' | 'admin_artists';
+  setActiveTab: (tab: 'intro' | 'download' | 'mypage' | 'admin' | 'admin_users' | 'admin_artists') => void;
   onOpenLogin: () => void;
   onLogout: () => void;
 }
@@ -27,7 +27,7 @@ export default function Navbar({ currentUser, activeTab, setActiveTab, onOpenLog
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleDropdownItemClick = (tab: 'intro' | 'download' | 'mypage' | 'admin') => {
+  const handleDropdownItemClick = (tab: 'intro' | 'download' | 'mypage' | 'admin' | 'admin_users' | 'admin_artists') => {
     setActiveTab(tab);
     setIsDropdownOpen(false);
     setIsMobileMenuOpen(false);
@@ -80,19 +80,6 @@ export default function Navbar({ currentUser, activeTab, setActiveTab, onOpenLog
               앱 다운로드
             </button>
 
-            {currentUser?.role === 'admin' && (
-              <button
-                onClick={() => setActiveTab('admin')}
-                className={`text-sm font-bold transition-colors duration-200 flex items-center gap-1 ${
-                  activeTab === 'admin' ? 'text-purple-600' : 'text-purple-500 hover:text-purple-700'
-                }`}
-                id="nav-tab-admin"
-              >
-                <ShieldCheck className="h-4 w-4" />
-                관리자 모드
-              </button>
-            )}
-
             {/* Profile / Dropdown */}
             <div className="relative" ref={dropdownRef} id="nav-user-dropdown-container">
               <button
@@ -143,25 +130,43 @@ export default function Navbar({ currentUser, activeTab, setActiveTab, onOpenLog
                       <span className="text-[11px] text-gray-400 block truncate mt-0.5">{currentUser.email}</span>
                     </div>
 
-                    {currentUser.role === 'admin' && (
+                    {currentUser.role === 'admin' ? (
+                      <>
+                        <button
+                          onClick={() => handleDropdownItemClick('admin')}
+                          className="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-purple-700 hover:bg-purple-50 hover:text-purple-950 rounded-xl transition-colors text-left"
+                          id="dropdown-admin-btn"
+                        >
+                          <ShieldCheck className="h-4 w-4 text-purple-500" />
+                          대시보드
+                        </button>
+                        <button
+                          onClick={() => handleDropdownItemClick('admin_users')}
+                          className="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-purple-700 hover:bg-purple-50 hover:text-purple-950 rounded-xl transition-colors text-left"
+                          id="dropdown-admin-users-btn"
+                        >
+                          <UserIcon className="h-4 w-4 text-purple-500" />
+                          일반 회원
+                        </button>
+                        <button
+                          onClick={() => handleDropdownItemClick('admin_artists')}
+                          className="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-purple-700 hover:bg-purple-50 hover:text-purple-950 rounded-xl transition-colors text-left"
+                          id="dropdown-admin-artists-btn"
+                        >
+                          <Palette className="h-4 w-4 text-purple-500" />
+                          인증 작가
+                        </button>
+                      </>
+                    ) : (
                       <button
-                        onClick={() => handleDropdownItemClick('admin')}
-                        className="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-purple-700 hover:bg-purple-50 hover:text-purple-950 rounded-xl transition-colors text-left"
-                        id="dropdown-admin-btn"
+                        onClick={() => handleDropdownItemClick('mypage')}
+                        className="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 rounded-xl transition-colors text-left"
+                        id="dropdown-mypage-btn"
                       >
-                        <ShieldCheck className="h-4 w-4 text-purple-500" />
-                        관리자 모드
+                        <Settings className="h-4 w-4 text-gray-400" />
+                        마이페이지
                       </button>
                     )}
-
-                    <button
-                      onClick={() => handleDropdownItemClick('mypage')}
-                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 rounded-xl transition-colors text-left"
-                      id="dropdown-mypage-btn"
-                    >
-                      <Settings className="h-4 w-4 text-gray-400" />
-                      마이페이지
-                    </button>
                     
                     <button
                       onClick={() => {
@@ -241,25 +246,43 @@ export default function Navbar({ currentUser, activeTab, setActiveTab, onOpenLog
               {currentUser ? (
                 <>
                   <div className="border-t border-gray-100 my-2 pt-2"></div>
-                  {currentUser.role === 'admin' && (
+                  {currentUser.role === 'admin' ? (
+                    <>
+                      <button
+                        onClick={() => handleDropdownItemClick('admin')}
+                        className={`block w-full text-left py-2 px-3 text-sm font-bold rounded-xl transition-colors ${
+                          activeTab === 'admin' ? 'bg-purple-50 text-purple-700' : 'text-purple-500 hover:bg-purple-50'
+                        }`}
+                      >
+                        대시보드
+                      </button>
+                      <button
+                        onClick={() => handleDropdownItemClick('admin_users')}
+                        className={`block w-full text-left py-2 px-3 text-sm font-bold rounded-xl transition-colors ${
+                          activeTab === 'admin_users' ? 'bg-purple-50 text-purple-700' : 'text-purple-500 hover:bg-purple-50'
+                        }`}
+                      >
+                        일반 회원
+                      </button>
+                      <button
+                        onClick={() => handleDropdownItemClick('admin_artists')}
+                        className={`block w-full text-left py-2 px-3 text-sm font-bold rounded-xl transition-colors ${
+                          activeTab === 'admin_artists' ? 'bg-purple-50 text-purple-700' : 'text-purple-500 hover:bg-purple-50'
+                        }`}
+                      >
+                        인증 작가
+                      </button>
+                    </>
+                  ) : (
                     <button
-                      onClick={() => handleDropdownItemClick('admin')}
-                      className={`block w-full text-left py-2 px-3 text-sm font-bold rounded-xl transition-colors ${
-                        activeTab === 'admin' ? 'bg-purple-50 text-purple-700' : 'text-purple-500 hover:bg-purple-50'
+                      onClick={() => handleDropdownItemClick('mypage')}
+                      className={`block w-full text-left py-2 px-3 text-sm font-semibold rounded-xl transition-colors ${
+                        activeTab === 'mypage' ? 'bg-gray-50 text-gray-900' : 'text-gray-500 hover:bg-gray-50'
                       }`}
                     >
-                      관리자 모드
+                      마이페이지
                     </button>
                   )}
-
-                  <button
-                    onClick={() => handleDropdownItemClick('mypage')}
-                    className={`block w-full text-left py-2 px-3 text-sm font-semibold rounded-xl transition-colors ${
-                      activeTab === 'mypage' ? 'bg-gray-50 text-gray-900' : 'text-gray-500 hover:bg-gray-50'
-                    }`}
-                  >
-                    마이페이지
-                  </button>
                   <button
                     onClick={() => {
                       onLogout();

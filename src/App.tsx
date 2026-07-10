@@ -31,7 +31,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [usersList, setUsersList] = useState<User[]>([]);
   const [artists, setArtists] = useState<ArtistMock[]>(MOCK_ARTISTS);
-  const [activeTab, setActiveTab] = useState<'intro' | 'download' | 'mypage' | 'admin'>('intro');
+  const [activeTab, setActiveTab] = useState<'intro' | 'download' | 'mypage' | 'admin' | 'admin_users' | 'admin_artists'>('intro');
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [notifications, setNotifications] = useState<ExhibitionNotification[]>(INITIAL_NOTIFICATIONS);
   const [pendingNfcTag, setPendingNfcTag] = useState<string | null>(null);
@@ -178,8 +178,12 @@ export default function App() {
               setUsersList(allUsersList);
             }
             setOauthProcessing(false);
-            // Navigate to mypage!
-            setActiveTab('mypage');
+            // Navigate to appropriate page!
+            if (loggedInUser.role === 'admin') {
+              setActiveTab('admin');
+            } else {
+              setActiveTab('mypage');
+            }
             // Clean URL query
             window.history.replaceState({}, document.title, '/');
           }
@@ -436,7 +440,7 @@ export default function App() {
           // Guard MyPage and Admin access
           if (tab === 'mypage' && !currentUser) {
             setIsLoginModalOpen(true);
-          } else if (tab === 'admin' && (!currentUser || currentUser.role !== 'admin')) {
+          } else if (['admin', 'admin_users', 'admin_artists'].includes(tab) && (!currentUser || currentUser.role !== 'admin')) {
             setIsLoginModalOpen(true);
           } else {
             setActiveTab(tab);
@@ -497,9 +501,9 @@ export default function App() {
             </motion.div>
           )}
 
-          {activeTab === 'admin' && currentUser && currentUser.role === 'admin' && (
+          {['admin', 'admin_users', 'admin_artists'].includes(activeTab) && currentUser && currentUser.role === 'admin' && (
             <motion.div
-              key="admin"
+              key={activeTab}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -510,6 +514,7 @@ export default function App() {
                 usersList={usersList}
                 onUpdateUsersList={handleUpdateUsersList}
                 onUpdateUser={handleUpdateUser}
+                activeView={activeTab as 'admin' | 'admin_users' | 'admin_artists'}
               />
             </motion.div>
           )}
