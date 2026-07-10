@@ -70,7 +70,7 @@ export default function KakaoLoginModal({ isOpen, onClose, onLoginSuccess }: Kak
     try {
       setIsLoggingIn(false); // Reset just in case
       const redirectUri = window.location.origin.includes('vercel.app')
-        ? 'https://mulgam-lovat.vercel.app/oauth'
+        ? `${window.location.origin}/oauth`
         : `${window.location.origin}/auth/callback`;
 
       // Construct Kakao authorize URL directly on client-side to prevent CORS/redirect issues

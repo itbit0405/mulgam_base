@@ -50,12 +50,14 @@ export default function App() {
     const processOauth = async () => {
       setOauthProcessing(true);
       try {
-        const backendUrl = window.location.origin.includes('vercel.app')
-          ? 'https://ais-pre-tnsbfut3hefguantpepxav-541849461180.asia-northeast1.run.app'
-          : window.location.origin;
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || (
+          window.location.origin.includes('vercel.app')
+            ? 'https://ais-pre-tnsbfut3hefguantpepxav-541849461180.asia-northeast1.run.app'
+            : window.location.origin
+        );
 
         const redirectUri = window.location.origin.includes('vercel.app')
-          ? 'https://mulgam-lovat.vercel.app/oauth'
+          ? `${window.location.origin}/oauth`
           : `${window.location.origin}/auth/callback`;
 
         console.log('Processing Kakao OAuth callback. Code:', code, 'Redirect URI:', redirectUri);
