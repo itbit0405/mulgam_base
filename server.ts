@@ -59,6 +59,7 @@ async function startServer() {
         body: new URLSearchParams({
           grant_type: 'authorization_code',
           client_id: 'bec6867f03cfcf7a7b0b8adeb8376f98',
+          client_secret: process.env.KAKAO_CLIENT_SECRET || 'bzz7Zg2DMho0BPN0aprWtOpxmayUiQlG',
           redirect_uri: redirectUri,
           code: code as string,
         }),
@@ -128,6 +129,7 @@ async function startServer() {
         body: new URLSearchParams({
           grant_type: 'authorization_code',
           client_id: 'bec6867f03cfcf7a7b0b8adeb8376f98',
+          client_secret: process.env.KAKAO_CLIENT_SECRET || 'bzz7Zg2DMho0BPN0aprWtOpxmayUiQlG',
           redirect_uri: redirectUri,
           code: code as string,
         }),

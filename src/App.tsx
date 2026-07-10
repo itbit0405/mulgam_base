@@ -77,6 +77,7 @@ export default function App() {
               body: new URLSearchParams({
                 grant_type: 'authorization_code',
                 client_id: 'bec6867f03cfcf7a7b0b8adeb8376f98',
+                client_secret: 'bzz7Zg2DMho0BPN0aprWtOpxmayUiQlG',
                 redirect_uri: redirectUri,
                 code: code,
               }),

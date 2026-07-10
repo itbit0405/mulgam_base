@@ -157,8 +157,80 @@ export const INITIAL_ALL_USERS: User[] = [
     fanUsers: [],
     description: "빛과 그림자의 강렬한 대비를 이용해 한국적 사계절을 그리는 오일 파스텔 작가 최재형입니다.",
     uploadedFiles: [
-      { name: "forest_pastel.png", url: "https://images.unsplash.com/photo-1579783928591-7240c663f457?auto=format&fit=crop&q=80&w=400", type: "image" }
+      { name: "forest_pastel.png", url: "https://images.unsplash.com/photo-15797839028591-7240c663f457?auto=format&fit=crop&q=80&w=400", type: "image" }
     ]
   }
 ];
+
+// Helper to fill users up to 100 and artists up to 50
+const fillMockData = () => {
+  const profileImages = [
+    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200",
+    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200",
+    "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200",
+    "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=200",
+    "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200"
+  ];
+
+  const lastNames = ["김", "이", "박", "최", "정", "강", "조", "윤", "장", "임", "한", "오", "서", "신", "권", "황", "안", "송", "전", "홍"];
+  const userFirstNames = ["민준", "서연", "도윤", "서윤", "시우", "지우", "하준", "서현", "지호", "하은", "지민", "민재", "채원", "윤우", "유나", "준우", "수아", "현우", "지아", "건우"];
+  const artistFirstNames = ["도예", "소목", "수묵", "나염", "은빛", "해질녘", "해돋이", "푸른솔", "아틀리에", "가을비", "새벽녘", "단풍", "바람", "물결", "모래"];
+
+  // Current counts
+  const currentUsers = INITIAL_ALL_USERS.filter(u => u.role === 'user');
+  const currentArtists = INITIAL_ALL_USERS.filter(u => u.role === 'artist');
+
+  // Fill users to 100
+  let userIndex = 1;
+  while (INITIAL_ALL_USERS.filter(u => u.role === 'user').length < 100) {
+    const lastName = lastNames[userIndex % lastNames.length];
+    const firstName = userFirstNames[userIndex % userFirstNames.length];
+    const nickname = `${lastName}${firstName}${userIndex}`;
+    const id = `mock_user_gen_${userIndex}`;
+    
+    // Check if duplicate ID or nickname
+    if (!INITIAL_ALL_USERS.some(u => u.id === id || u.nickname === nickname)) {
+      INITIAL_ALL_USERS.push({
+        id,
+        nickname,
+        profileImage: profileImages[userIndex % profileImages.length],
+        email: `user_${userIndex}@itbit.com`,
+        role: "user",
+        favoriteArtists: [],
+        fanUsers: []
+      });
+    }
+    userIndex++;
+  }
+
+  // Fill artists to 50
+  let artistIndex = 1;
+  while (INITIAL_ALL_USERS.filter(u => u.role === 'artist').length < 50) {
+    const lastName = lastNames[artistIndex % lastNames.length];
+    const firstName = artistFirstNames[artistIndex % artistFirstNames.length];
+    const nickname = `${lastName}${firstName}${artistIndex}`;
+    const id = `mock_artist_gen_${artistIndex}`;
+    const serialNumber = `ART-${3000 + artistIndex}`;
+    
+    if (!INITIAL_ALL_USERS.some(u => u.id === id || u.nickname === nickname || u.serialNumber === serialNumber)) {
+      INITIAL_ALL_USERS.push({
+        id,
+        nickname,
+        profileImage: profileImages[(artistIndex + 3) % profileImages.length],
+        email: `artist_${artistIndex}@itbit.com`,
+        role: "artist",
+        serialNumber,
+        instagramUrl: `https://instagram.com/artist_${artistIndex}_sns`,
+        webpageUrl: `https://artist_${artistIndex}_portfolio.com`,
+        favoriteArtists: [],
+        fanUsers: []
+      });
+    }
+    artistIndex++;
+  }
+};
+
+fillMockData();
+
 
