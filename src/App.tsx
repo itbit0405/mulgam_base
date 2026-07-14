@@ -31,6 +31,9 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [usersList, setUsersList] = useState<User[]>([]);
   const [artists, setArtists] = useState<ArtistMock[]>(MOCK_ARTISTS);
+  const [isDemoActive, setIsDemoActive] = useState<boolean>(() => {
+    return localStorage.getItem('is_demo_mode') === 'true';
+  });
   const [activeTab, setActiveTab] = useState<'intro' | 'download' | 'mypage' | 'admin' | 'admin_users' | 'admin_artists'>('intro');
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [notifications, setNotifications] = useState<ExhibitionNotification[]>(INITIAL_NOTIFICATIONS);
@@ -412,6 +415,8 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    localStorage.setItem('is_demo_mode', 'false');
+    setIsDemoActive(false);
     handleUpdateUser(null);
   };
 
@@ -455,8 +460,6 @@ export default function App() {
       </div>
     );
   }
-
-  const isDemoActive = !!(currentUser && ['user_kakaotalk_987', 'artist_kakaotalk_123', 'admin_kakaotalk_777'].includes(currentUser.id));
 
   const displayedUsersList = isDemoActive
     ? usersList
@@ -592,6 +595,8 @@ export default function App() {
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
         onLoginSuccess={(user) => {
+          localStorage.setItem('is_demo_mode', 'false');
+          setIsDemoActive(false);
           let updatedUser = { ...user };
           
           // Filter out representative mock serials if they are in favorites list
@@ -631,6 +636,8 @@ export default function App() {
       <StateController
         currentUser={currentUser}
         onStateChange={(user) => {
+          localStorage.setItem('is_demo_mode', 'true');
+          setIsDemoActive(true);
           if (user) {
             let updatedUser = { ...user };
             const savedPending = localStorage.getItem('nfc_pending_tag') || pendingNfcTag;
