@@ -75,11 +75,30 @@ export async function upsertProfile(profile: { id?: string; kakao_id: string; ni
 export async function submitWriterApplication(userId: string, description: string, files: { file_type: string; file_url: string }[]) {
   if (!supabase) return null;
   try {
+    // Resolve UUID for userId (which might be Kakao ID)
+    let profileUuid = userId;
+    if (userId.startsWith('kakao-') || userId.startsWith('user_kakaotalk_') || userId.startsWith('artist_kakaotalk_') || userId.startsWith('admin_kakaotalk_')) {
+      const profile = await getProfileByKakaoId(userId);
+      if (profile && profile.id) {
+        profileUuid = profile.id;
+      } else {
+        // If profile doesn't exist, upsert it first to get UUID
+        const newProfile = await upsertProfile({
+          kakao_id: userId,
+          nickname: '임시사용자',
+          role: 'user'
+        });
+        if (newProfile && newProfile.id) {
+          profileUuid = newProfile.id;
+        }
+      }
+    }
+
     // Insert into WRITER_APPLICATIONS
     const { data: appData, error: appError } = await supabase
       .from('WRITER_APPLICATIONS')
       .insert({
-        user_id: userId,
+        user_id: profileUuid,
         status: 'pending'
       })
       .select()
@@ -111,7 +130,7 @@ export async function submitWriterApplication(userId: string, description: strin
     await supabase
       .from('PROFILES')
       .update({ description })
-      .eq('id', userId);
+      .eq('id', profileUuid);
 
     return appData;
   } catch (err) {
@@ -148,19 +167,37 @@ export async function getWriterApplications() {
 export async function approveWriterApplication(applicationId: string, userId: string, serialNumber: string, adminId: string) {
   if (!supabase) return false;
   try {
+    // Resolve UUID for userId (which might be Kakao ID)
+    let profileUuid = userId;
+    if (userId.startsWith('kakao-') || userId.startsWith('user_kakaotalk_') || userId.startsWith('artist_kakaotalk_') || userId.startsWith('admin_kakaotalk_')) {
+      const profile = await getProfileByKakaoId(userId);
+      if (profile && profile.id) {
+        profileUuid = profile.id;
+      }
+    }
+
+    // Resolve UUID for adminId (which might be Kakao ID)
+    let adminUuid = adminId;
+    if (adminId.startsWith('kakao-') || adminId.startsWith('user_kakaotalk_') || adminId.startsWith('artist_kakaotalk_') || adminId.startsWith('admin_kakaotalk_')) {
+      const adminProfile = await getProfileByKakaoId(adminId);
+      if (adminProfile && adminProfile.id) {
+        adminUuid = adminProfile.id;
+      }
+    }
+
     // 1. Create a row in WRITERS
     const { data: writerData, error: writerError } = await supabase
       .from('WRITERS')
-      .insert({
-        id: userId, // Match profile uuid or auto-generate
+      .upsert({
+        id: profileUuid, // Use UUID
         serial_number: serialNumber,
         approved_at: new Date().toISOString()
-      })
+      }, { onConflict: 'id' })
       .select()
       .single();
 
     if (writerError) {
-      console.error('Error inserting WRITER:', writerError);
+      console.error('Error inserting/upserting WRITER:', writerError);
       return false;
     }
 
@@ -169,7 +206,7 @@ export async function approveWriterApplication(applicationId: string, userId: st
       .from('WRITER_APPLICATIONS')
       .update({
         status: 'approved',
-        reviewed_by: adminId
+        reviewed_by: adminUuid
       })
       .eq('id', applicationId);
 
@@ -181,7 +218,7 @@ export async function approveWriterApplication(applicationId: string, userId: st
     const { error: profileUpdateError } = await supabase
       .from('PROFILES')
       .update({ role: 'artist' })
-      .eq('id', userId);
+      .eq('id', profileUuid);
 
     if (profileUpdateError) {
       console.error('Error updating user profile role:', profileUpdateError);

@@ -401,7 +401,7 @@ export default function App() {
 
     // Also update current user if their profile was modified or deleted
     if (currentUser) {
-      const updatedSelf = updatedList.find(u => u.id === currentUser.id);
+      const updatedSelf = finalMerged.find(u => u.id === currentUser.id);
       if (updatedSelf) {
         if (JSON.stringify(updatedSelf) !== JSON.stringify(currentUser)) {
           setCurrentUser(updatedSelf);
@@ -463,7 +463,7 @@ export default function App() {
 
   const displayedUsersList = isDemoActive
     ? usersList
-    : usersList.filter(u => u.id && u.id.startsWith('kakao-'));
+    : usersList.filter(u => u.id && (u.id.startsWith('kakao-') || (currentUser && u.id === currentUser.id)));
 
   const displayedArtists = isDemoActive
     ? artists

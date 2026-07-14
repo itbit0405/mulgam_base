@@ -119,20 +119,34 @@ export default function AdminPage({ currentUser, usersList, onUpdateUsersList, o
     if (isSupabaseConfigured) {
       try {
         const apps = await getWriterApplications();
-        const matchedApp = apps.find((app: any) => app.user_id === approvingUser.id && app.status === 'pending');
+        const matchedApp = apps.find((app: any) => {
+          const profile = Array.isArray(app.PROFILES) ? app.PROFILES[0] : app.PROFILES;
+          const kakaoId = profile?.kakao_id || app.user_id;
+          return kakaoId === approvingUser.id && app.status === 'pending';
+        });
+
         if (matchedApp) {
           await approveWriterApplication(matchedApp.id, approvingUser.id, generatedSerial, currentUser.id);
           console.log('Successfully approved writer application in Supabase.');
         } else {
           // Fallback if no formal application existed but admin promoted them
-          const { supabase } = await import('../supabaseClient');
+          const { supabase, getProfileByKakaoId } = await import('../supabaseClient');
           if (supabase) {
+            let profileUuid = approvingUser.id;
+            if (approvingUser.id.startsWith('kakao-') || approvingUser.id.startsWith('user_kakaotalk_') || approvingUser.id.startsWith('artist_kakaotalk_') || approvingUser.id.startsWith('admin_kakaotalk_')) {
+              const profile = await getProfileByKakaoId(approvingUser.id);
+              if (profile && profile.id) {
+                profileUuid = profile.id;
+              }
+            }
+
             await supabase.from('WRITERS').upsert({
-              id: approvingUser.id,
+              id: profileUuid,
               serial_number: generatedSerial,
               approved_at: new Date().toISOString()
-            });
-            await supabase.from('PROFILES').update({ role: 'artist' }).eq('kakao_id', approvingUser.id);
+            }, { onConflict: 'id' });
+
+            await supabase.from('PROFILES').update({ role: 'artist' }).eq('id', profileUuid);
             console.log('Directly promoted and synced artist to Supabase.');
           }
         }
