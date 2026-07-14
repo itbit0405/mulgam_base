@@ -261,9 +261,23 @@ export default function MyPage({ currentUser, onUpdateUser, notifications, onAdd
   };
 
   // Helper to resolve favorite artist objects from their serial numbers
-  const favoritedArtistObjects = artists.filter(artist => 
-    currentUser.favoriteArtists.includes(artist.serialNumber)
-  );
+  const favoritedArtistObjects = isRealKakaoUser
+    ? currentUser.favoriteArtists.map(serial => {
+        const found = artists.find(a => a.serialNumber.trim().toUpperCase() === serial.trim().toUpperCase());
+        if (found) return found;
+        return {
+          name: `인증 작가 (${serial.trim().toUpperCase()})`,
+          serialNumber: serial.trim().toUpperCase(),
+          profileImage: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=150&q=80',
+          instagramUrl: 'https://instagram.com',
+          webpageUrl: 'https://myportfolio.com',
+          description: '실물 NFC 카드로 인식된 정식 일러스트레이터입니다.',
+          recentExhibitions: []
+        };
+      })
+    : artists.filter(artist => 
+        currentUser.favoriteArtists.includes(artist.serialNumber)
+      );
 
   return (
     <div className="py-8 max-w-5xl mx-auto space-y-10" id="mypage-component-container">

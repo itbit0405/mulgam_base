@@ -285,8 +285,17 @@ export default function App() {
         const parsed = JSON.parse(savedUser);
         
         // Clean up favorite artists if they contain old mock serials starting with ART-3
+        // Or if the user is a real Kakao user, filter out all mock artists (BOM, DOYUN, MINJI, HAJIN)
         if (parsed.favoriteArtists) {
-          parsed.favoriteArtists = parsed.favoriteArtists.filter((serial: string) => !serial.startsWith('ART-3'));
+          const isKakao = parsed.id && parsed.id.startsWith('kakao-');
+          parsed.favoriteArtists = parsed.favoriteArtists.filter((serial: string) => {
+            if (serial.startsWith('ART-3')) return false;
+            if (isKakao) {
+              const mockSerials = ['ART-1004', 'ART-2408', 'ART-7721', 'ART-7777'];
+              if (mockSerials.includes(serial.trim().toUpperCase())) return false;
+            }
+            return true;
+          });
         }
         
         const matched = loadedUsers.find(u => u.id === parsed.id);
@@ -324,8 +333,10 @@ export default function App() {
 
   // Dynamically calculate and merge verified artist records from usersList into artists
   useEffect(() => {
+    const isRealKakaoUser = currentUser && currentUser.id.startsWith('kakao-');
     const customArtists = usersList.filter(u => u.role === 'artist');
-    const merged = [...MOCK_ARTISTS];
+    const baseArtists = isRealKakaoUser ? [] : [...MOCK_ARTISTS];
+    const merged = [...baseArtists];
     for (const user of customArtists) {
       if (user.serialNumber && !merged.some(a => a.serialNumber === user.serialNumber)) {
         merged.push({
@@ -340,7 +351,7 @@ export default function App() {
       }
     }
     setArtists(merged);
-  }, [usersList]);
+  }, [usersList, currentUser]);
 
   // Sync state changes with localStorage
   const handleUpdateUser = (updatedUser: User | null) => {
@@ -559,6 +570,12 @@ export default function App() {
         onClose={() => setIsLoginModalOpen(false)}
         onLoginSuccess={(user) => {
           let updatedUser = { ...user };
+          
+          // Filter out representative mock serials if they are in favorites list
+          if (updatedUser.favoriteArtists) {
+            const mockSerials = ['ART-1004', 'ART-2408', 'ART-7721', 'ART-7777'];
+            updatedUser.favoriteArtists = updatedUser.favoriteArtists.filter(serial => !mockSerials.includes(serial.trim().toUpperCase()));
+          }
           
           // Check if there is a pending NFC tag serial number
           const savedPending = localStorage.getItem('nfc_pending_tag') || pendingNfcTag;
