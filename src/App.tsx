@@ -301,6 +301,9 @@ export default function App() {
         const matched = loadedUsers.find(u => u.id === parsed.id);
         const active = matched || parsed;
         setCurrentUser(active);
+        if (active.role === 'admin') {
+          setActiveTab('admin');
+        }
 
         // Auto-sync fresh profile from Supabase if configured
         if (isSupabaseConfigured) {
@@ -383,8 +386,15 @@ export default function App() {
   };
 
   const handleUpdateUsersList = (updatedList: User[]) => {
-    setUsersList(updatedList);
-    localStorage.setItem('nfc_platform_all_users', JSON.stringify(updatedList));
+    const isDemo = !!(currentUser && ['user_kakaotalk_987', 'artist_kakaotalk_123', 'admin_kakaotalk_777'].includes(currentUser.id));
+    let finalMerged = updatedList;
+    if (!isDemo) {
+      // Preserve hidden dummy/mock users
+      const dummyUsers = usersList.filter(u => !u.id || !u.id.startsWith('kakao-'));
+      finalMerged = [...dummyUsers, ...updatedList];
+    }
+    setUsersList(finalMerged);
+    localStorage.setItem('nfc_platform_all_users', JSON.stringify(finalMerged));
 
     // Also update current user if their profile was modified or deleted
     if (currentUser) {
@@ -446,6 +456,19 @@ export default function App() {
     );
   }
 
+  const isDemoActive = !!(currentUser && ['user_kakaotalk_987', 'artist_kakaotalk_123', 'admin_kakaotalk_777'].includes(currentUser.id));
+
+  const displayedUsersList = isDemoActive
+    ? usersList
+    : usersList.filter(u => u.id && u.id.startsWith('kakao-'));
+
+  const displayedArtists = isDemoActive
+    ? artists
+    : artists.filter(a => {
+        const mockSerials = ['ART-1004', 'ART-2408', 'ART-7721', 'ART-9912'];
+        return !mockSerials.includes(a.serialNumber);
+      });
+
   return (
     <div className="min-h-screen bg-[#F9FAFB] text-gray-900 flex flex-col font-sans selection:bg-indigo-100 selection:text-indigo-950" id="application-root-container">
       {/* OAuth Error Alert overlay if any */}
@@ -500,7 +523,7 @@ export default function App() {
                 onAddArtist={handleAddArtist}
                 onOpenLogin={() => setIsLoginModalOpen(true)}
                 onNavigateToMypage={() => setActiveTab('mypage')}
-                artists={artists}
+                artists={displayedArtists}
               />
             </motion.div>
           )}
@@ -530,7 +553,7 @@ export default function App() {
                 onUpdateUser={handleUpdateUser}
                 notifications={notifications}
                 onAddNotification={handleAddNotification}
-                artists={artists}
+                artists={displayedArtists}
               />
             </motion.div>
           )}
@@ -545,7 +568,7 @@ export default function App() {
             >
               <AdminPage
                 currentUser={currentUser}
-                usersList={usersList}
+                usersList={displayedUsersList}
                 onUpdateUsersList={handleUpdateUsersList}
                 onUpdateUser={handleUpdateUser}
                 activeView={activeTab as 'admin' | 'admin_users' | 'admin_artists'}
@@ -596,7 +619,11 @@ export default function App() {
           }
           
           handleUpdateUser(updatedUser);
-          setActiveTab('mypage'); // Automatically go to MyPage upon successful login!
+          if (updatedUser.role === 'admin') {
+            setActiveTab('admin');
+          } else {
+            setActiveTab('mypage');
+          }
         }}
       />
 
