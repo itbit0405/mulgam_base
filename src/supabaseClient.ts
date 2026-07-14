@@ -45,10 +45,14 @@ export async function upsertProfile(profile: { id?: string; kakao_id: string; ni
   try {
     // If id (uuid) is not provided, we can look up if profile already exists or let database auto-generate/use auth.uid
     const existing = await getProfileByKakaoId(profile.kakao_id);
+    let finalRole = profile.role;
+    if (existing && existing.role && existing.role !== 'user') {
+      finalRole = existing.role;
+    }
     const payload = {
       kakao_id: profile.kakao_id,
       nickname: profile.nickname,
-      role: profile.role,
+      role: finalRole,
       ...(existing?.id ? { id: existing.id } : (profile.id ? { id: profile.id } : {}))
     };
 

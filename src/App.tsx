@@ -146,22 +146,45 @@ export default function App() {
         }
           
         if (loggedInUser) {
-          // Save locally
-          localStorage.setItem('nfc_platform_user', JSON.stringify(loggedInUser));
-          
-          // Upsert user profile into Supabase on successful authentication
+          // Sync/load fresh profile from Supabase first to preserve elevated roles (artist, admin)
           if (isSupabaseConfigured) {
             try {
-              await upsertProfile({
-                kakao_id: loggedInUser.id,
-                nickname: loggedInUser.nickname,
-                role: loggedInUser.role
-              });
-              console.log('Successfully synced login user profile to Supabase.');
+              const sbProfile = await getProfileByKakaoId(loggedInUser.id);
+              if (sbProfile) {
+                loggedInUser = {
+                  ...loggedInUser,
+                  nickname: sbProfile.nickname || loggedInUser.nickname,
+                  role: sbProfile.role as any || loggedInUser.role,
+                  description: sbProfile.description || undefined,
+                };
+
+                // Retrieve artist's serial_number if they are an approved artist
+                const { supabase } = await import('./supabaseClient');
+                if (supabase && loggedInUser.role === 'artist') {
+                  const { data: writerData } = await supabase
+                    .from('WRITERS')
+                    .select('serial_number')
+                    .eq('id', sbProfile.id)
+                    .maybeSingle();
+                  if (writerData && writerData.serial_number) {
+                    loggedInUser.serialNumber = writerData.serial_number;
+                  }
+                }
+              } else {
+                // If brand-new user, register them in Supabase
+                await upsertProfile({
+                  kakao_id: loggedInUser.id,
+                  nickname: loggedInUser.nickname,
+                  role: loggedInUser.role
+                });
+              }
             } catch (sbErr) {
-              console.error('Failed to sync login user profile to Supabase:', sbErr);
+              console.error('Failed to sync login profile with Supabase during callback:', sbErr);
             }
           }
+
+          // Save locally
+          localStorage.setItem('nfc_platform_user', JSON.stringify(loggedInUser));
           
           if (window.opener) {
             // Post message back to parent window
@@ -310,13 +333,29 @@ export default function App() {
 
         // Auto-sync fresh profile from Supabase if configured
         if (isSupabaseConfigured) {
-          getProfileByKakaoId(active.id).then(sbProfile => {
+          getProfileByKakaoId(active.id).then(async sbProfile => {
             if (sbProfile) {
               const updatedUser: User = {
                 ...active,
                 nickname: sbProfile.nickname || active.nickname,
                 role: sbProfile.role as any || active.role,
               };
+
+              // Retrieve serial number for artist
+              if (updatedUser.role === 'artist') {
+                const { supabase } = await import('./supabaseClient');
+                if (supabase) {
+                  const { data: writerData } = await supabase
+                    .from('WRITERS')
+                    .select('serial_number')
+                    .eq('id', sbProfile.id)
+                    .maybeSingle();
+                  if (writerData && writerData.serial_number) {
+                    updatedUser.serialNumber = writerData.serial_number;
+                  }
+                }
+              }
+
               setCurrentUser(updatedUser);
               localStorage.setItem('nfc_platform_user', JSON.stringify(updatedUser));
             }
@@ -601,10 +640,45 @@ export default function App() {
       <KakaoLoginModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
-        onLoginSuccess={(user) => {
+        onLoginSuccess={async (user) => {
           localStorage.setItem('is_demo_mode', 'false');
           setIsDemoActive(false);
           let updatedUser = { ...user };
+
+          if (isSupabaseConfigured) {
+            try {
+              const sbProfile = await getProfileByKakaoId(user.id);
+              if (sbProfile) {
+                updatedUser = {
+                  ...updatedUser,
+                  nickname: sbProfile.nickname || updatedUser.nickname,
+                  role: sbProfile.role as any || updatedUser.role,
+                  description: sbProfile.description || undefined,
+                };
+
+                // Query WRITERS table for serial_number
+                const { supabase } = await import('./supabaseClient');
+                if (supabase && updatedUser.role === 'artist') {
+                  const { data: writerData } = await supabase
+                    .from('WRITERS')
+                    .select('serial_number')
+                    .eq('id', sbProfile.id)
+                    .maybeSingle();
+                  if (writerData && writerData.serial_number) {
+                    updatedUser.serialNumber = writerData.serial_number;
+                  }
+                }
+              } else {
+                await upsertProfile({
+                  kakao_id: updatedUser.id,
+                  nickname: updatedUser.nickname,
+                  role: updatedUser.role
+                });
+              }
+            } catch (sbErr) {
+              console.error('Failed to sync login modal success with Supabase:', sbErr);
+            }
+          }
           
           // Filter out representative mock serials if they are in favorites list
           if (updatedUser.favoriteArtists) {
