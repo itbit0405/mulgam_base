@@ -177,6 +177,16 @@ export async function approveWriterApplication(applicationId: string, userId: st
       const profile = await getProfileByKakaoId(userId);
       if (profile && profile.id) {
         profileUuid = profile.id;
+      } else {
+        // Safe fallback: Upsert profile to get a valid UUID before creating writer row
+        const newProfile = await upsertProfile({
+          kakao_id: userId,
+          nickname: '임시작가',
+          role: 'user'
+        });
+        if (newProfile && newProfile.id) {
+          profileUuid = newProfile.id;
+        }
       }
     }
 
@@ -222,7 +232,7 @@ export async function approveWriterApplication(applicationId: string, userId: st
     const { error: profileUpdateError } = await supabase
       .from('PROFILES')
       .update({ role: 'artist' })
-      .eq('id', profileUuid);
+      .eq('kakao_id', userId);
 
     if (profileUpdateError) {
       console.error('Error updating user profile role:', profileUpdateError);

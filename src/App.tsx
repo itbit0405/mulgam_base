@@ -13,7 +13,7 @@ import MyPage from './components/MyPage';
 import AdminPage from './components/AdminPage';
 import KakaoLoginModal from './components/KakaoLoginModal';
 import StateController from './components/StateController';
-import { INITIAL_ALL_USERS, MOCK_ARTISTS } from './data';
+import { INITIAL_ALL_USERS, MOCK_ARTISTS, MOCK_USER_FANS } from './data';
 import { isSupabaseConfigured, upsertProfile, getProfileByKakaoId } from './supabaseClient';
 
 const INITIAL_NOTIFICATIONS: ExhibitionNotification[] = [
@@ -146,6 +146,28 @@ export default function App() {
         }
           
         if (loggedInUser) {
+          // Merge local profile to preserve role changes (e.g. approved artist status) from offline/mock states
+          const savedAllUsersStr = localStorage.getItem('nfc_platform_all_users');
+          let localList: User[] = [];
+          if (savedAllUsersStr) {
+            try {
+              localList = JSON.parse(savedAllUsersStr);
+            } catch (e) {}
+          }
+          const localExisting = localList.find(u => u.id === loggedInUser!.id);
+          if (localExisting) {
+            loggedInUser = {
+              ...loggedInUser,
+              role: localExisting.role,
+              serialNumber: localExisting.serialNumber || loggedInUser.serialNumber,
+              uploadedFiles: localExisting.uploadedFiles || loggedInUser.uploadedFiles,
+              instagramUrl: localExisting.instagramUrl || loggedInUser.instagramUrl,
+              webpageUrl: localExisting.webpageUrl || loggedInUser.webpageUrl,
+              description: localExisting.description || loggedInUser.description,
+              favoriteArtists: localExisting.favoriteArtists || loggedInUser.favoriteArtists
+            };
+          }
+
           // Sync/load fresh profile from Supabase first to preserve elevated roles (artist, admin)
           if (isSupabaseConfigured) {
             try {
@@ -271,6 +293,99 @@ export default function App() {
       }
     }
   }, [currentUser, usersList]);
+
+  const syncUsersListWithSupabase = async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const { supabase, getWriterApplications } = await import('./supabaseClient');
+      if (!supabase) return;
+
+      // 1. Fetch all PROFILES
+      const { data: profiles, error: pError } = await supabase
+        .from('PROFILES')
+        .select('*');
+
+      if (pError) throw pError;
+
+      // 2. Fetch all WRITERS
+      const { data: writers, error: wError } = await supabase
+        .from('WRITERS')
+        .select('*');
+
+      if (wError) throw wError;
+
+      const writersMap = new Map();
+      if (writers) {
+        writers.forEach(w => writersMap.set(w.id, w.serial_number));
+      }
+
+      // 3. Fetch applications
+      const apps = await getWriterApplications();
+      const appsMap = new Map();
+      if (apps) {
+        apps.forEach((app: any) => {
+          const files = app.APPLICATION_FILES || [];
+          const uploadedFiles = files.map((f: any) => ({
+            id: f.id,
+            name: f.file_url.split('/').pop() || 'portfolio',
+            type: f.file_type || 'image',
+            url: f.file_url,
+            size: '1.2MB'
+          }));
+          appsMap.set(app.user_id, {
+            uploadedFiles
+          });
+        });
+      }
+
+      // 4. Map profiles to User format
+      const dbUsers: User[] = profiles.map(p => {
+        const appInfo = appsMap.get(p.id) || {};
+        return {
+          id: p.kakao_id,
+          nickname: p.nickname,
+          email: `${p.nickname.replace(/\s+/g, '')}@kakao.com`,
+          profileImage: p.profile_image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+          role: p.role,
+          serialNumber: writersMap.get(p.id) || undefined,
+          uploadedFiles: appInfo.uploadedFiles || [],
+          description: p.description || undefined,
+          favoriteArtists: [],
+          fanUsers: p.role === 'artist' ? [...MOCK_USER_FANS] : []
+        };
+      });
+
+      // 5. Merge database users into usersList
+      setUsersList(prev => {
+        const nonKakao = prev.filter(u => !u.id || (!u.id.startsWith('kakao-') && !u.id.startsWith('user_kakaotalk_') && !u.id.startsWith('artist_kakaotalk_') && !u.id.startsWith('admin_kakaotalk_')));
+        
+        const merged = [...nonKakao];
+        for (const dbU of dbUsers) {
+          const idx = merged.findIndex(u => u.id === dbU.id);
+          if (idx !== -1) {
+            merged[idx] = {
+              ...merged[idx],
+              ...dbU,
+              favoriteArtists: merged[idx].favoriteArtists || []
+            };
+          } else {
+            merged.push(dbU);
+          }
+        }
+        localStorage.setItem('nfc_platform_all_users', JSON.stringify(merged));
+        return merged;
+      });
+    } catch (err) {
+      console.error('Failed to sync users list with Supabase:', err);
+    }
+  };
+
+  // Sync users list on mount
+  useEffect(() => {
+    if (isSupabaseConfigured) {
+      syncUsersListWithSupabase();
+    }
+  }, []);
 
   // Load persistent user data, users list and notifications from localStorage on mount
   useEffect(() => {
@@ -437,6 +552,10 @@ export default function App() {
     }
     setUsersList(finalMerged);
     localStorage.setItem('nfc_platform_all_users', JSON.stringify(finalMerged));
+
+    if (isSupabaseConfigured) {
+      syncUsersListWithSupabase().catch(err => console.error('Failed to sync users list:', err));
+    }
 
     // Also update current user if their profile was modified or deleted
     if (currentUser) {
@@ -643,7 +762,21 @@ export default function App() {
         onLoginSuccess={async (user) => {
           localStorage.setItem('is_demo_mode', 'false');
           setIsDemoActive(false);
-          let updatedUser = { ...user };
+          
+          // Merge local profile to preserve role changes (e.g. approved artist status) from offline/mock states
+          const localExisting = usersList.find(u => u.id === user.id);
+          let updatedUser = { 
+            ...user,
+            ...(localExisting ? {
+              role: localExisting.role,
+              serialNumber: localExisting.serialNumber || user.serialNumber,
+              uploadedFiles: localExisting.uploadedFiles || user.uploadedFiles,
+              instagramUrl: localExisting.instagramUrl || user.instagramUrl,
+              webpageUrl: localExisting.webpageUrl || user.webpageUrl,
+              description: localExisting.description || user.description,
+              favoriteArtists: localExisting.favoriteArtists || user.favoriteArtists
+            } : {})
+          };
 
           if (isSupabaseConfigured) {
             try {
@@ -705,6 +838,9 @@ export default function App() {
           }
           
           handleUpdateUser(updatedUser);
+          if (isSupabaseConfigured) {
+            syncUsersListWithSupabase().catch(err => console.error('Failed to sync users list after login:', err));
+          }
           if (updatedUser.role === 'admin') {
             setActiveTab('admin');
           } else {
