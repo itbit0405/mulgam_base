@@ -415,20 +415,20 @@ export default function AdminPage({ currentUser, usersList, onUpdateUsersList, o
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 self-end sm:self-center">
+                      <div className="flex items-center gap-2 self-end sm:self-center flex-row flex-nowrap shrink-0">
                         <button
                           onClick={() => handleRejectArtist(user)}
-                          className="px-4 py-2 border border-gray-200 text-gray-500 hover:text-red-600 hover:bg-red-50/30 hover:border-red-100 rounded-xl text-xs font-bold transition-all"
+                          className="px-4 py-2 border border-gray-200 text-gray-500 hover:text-red-600 hover:bg-red-50/30 hover:border-red-100 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0"
                         >
                           신청 반려
                         </button>
                         <button
                           onClick={() => handleOpenApprove(user)}
-                          className="px-4.5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
+                          className="px-4.5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 active:scale-95 whitespace-nowrap shrink-0"
                           id={`approve-btn-${user.id}`}
                         >
-                          <Check className="h-3.5 w-3.5" />
-                          심사 최종 승인
+                          <Check className="h-3.5 w-3.5 shrink-0" />
+                          작가 승인
                         </button>
                       </div>
                     </div>

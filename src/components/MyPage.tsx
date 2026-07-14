@@ -49,6 +49,7 @@ export default function MyPage({ currentUser, onUpdateUser, notifications, onAdd
   const [webpageInput, setWebpageInput] = useState('');
   const [appFiles, setAppFiles] = useState<{ name: string; url: string; type: 'image' | 'video' }[]>([]);
   const [isSubmittingApp, setIsSubmittingApp] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Artist Serial Number editing
   const [isEditingSerial, setIsEditingSerial] = useState(false);
@@ -165,6 +166,7 @@ export default function MyPage({ currentUser, onUpdateUser, notifications, onAdd
         });
       }
       setAppFiles(updatedFiles);
+      setFormError(null);
     }
   };
 
@@ -176,6 +178,17 @@ export default function MyPage({ currentUser, onUpdateUser, notifications, onAdd
   // 5. Submit Artist Application -> Set to artist_pending so the admin can approve!
   const handleArtistSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
+    const hasInstagram = !!instagramInput.trim();
+    const hasWebpage = !!webpageInput.trim();
+    const hasFiles = appFiles.length > 0;
+
+    if (!hasInstagram && !hasWebpage && !hasFiles) {
+      setFormError('인스타그램 URL, 웹페이지 URL, 그림 이미지, 또는 작업 동영상 중 최소 하나 이상은 입력 또는 첨부해야 신청이 가능합니다.');
+      return;
+    }
+
     setIsSubmittingApp(true);
 
     if (isSupabaseConfigured) {
@@ -199,8 +212,8 @@ export default function MyPage({ currentUser, onUpdateUser, notifications, onAdd
       onUpdateUser({
         ...currentUser,
         role: 'artist_pending',
-        instagramUrl: instagramInput || 'https://instagram.com/my_drawings',
-        webpageUrl: webpageInput || 'https://myportfolio.com',
+        instagramUrl: instagramInput.trim() || undefined,
+        webpageUrl: webpageInput.trim() || undefined,
         uploadedFiles: appFiles,
         description: 'NFC 카드로 독자들과 소통하고 소식을 보낼 정식 승인 일러스트레이터 지망 작가입니다.'
       });
@@ -210,6 +223,7 @@ export default function MyPage({ currentUser, onUpdateUser, notifications, onAdd
       setInstagramInput('');
       setWebpageInput('');
       setAppFiles([]);
+      setFormError(null);
     }, 1500);
   };
 
@@ -675,7 +689,7 @@ export default function MyPage({ currentUser, onUpdateUser, notifications, onAdd
                         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all self-start sm:self-center"
                         id="apply-artist-open-btn"
                       >
-                        작가 승인 신청서 작성
+                        작가 승인 요청
                       </button>
                     )}
                   </div>
@@ -692,9 +706,11 @@ export default function MyPage({ currentUser, onUpdateUser, notifications, onAdd
                             </span>
                             <input
                               type="url"
-                              required
                               value={instagramInput}
-                              onChange={(e) => setInstagramInput(e.target.value)}
+                              onChange={(e) => {
+                                setInstagramInput(e.target.value);
+                                if (formError) setFormError(null);
+                              }}
                               placeholder="https://instagram.com/my_work"
                               className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
                               id="instagram-url-input"
@@ -711,9 +727,11 @@ export default function MyPage({ currentUser, onUpdateUser, notifications, onAdd
                             </span>
                             <input
                               type="url"
-                              required
                               value={webpageInput}
-                              onChange={(e) => setWebpageInput(e.target.value)}
+                              onChange={(e) => {
+                                setWebpageInput(e.target.value);
+                                if (formError) setFormError(null);
+                              }}
                               placeholder="https://myportfolio.com"
                               className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
                               id="webpage-url-input"
@@ -790,6 +808,14 @@ export default function MyPage({ currentUser, onUpdateUser, notifications, onAdd
                               </div>
                             ))}
                           </div>
+                        </div>
+                      )}
+
+                      {/* Form Error Display */}
+                      {formError && (
+                        <div className="p-3.5 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-2.5 text-xs text-red-700 font-semibold" id="artist-apply-form-error">
+                          <span className="shrink-0 text-sm">⚠️</span>
+                          <p className="leading-normal">{formError}</p>
                         </div>
                       )}
 

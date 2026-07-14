@@ -472,6 +472,13 @@ export default function App() {
         return !mockSerials.includes(a.serialNumber);
       });
 
+  const displayedNotifications = isDemoActive
+    ? notifications
+    : notifications.filter(n => {
+        const mockSerials = ['ART-1004', 'ART-2408', 'ART-7721', 'ART-9912'];
+        return n.id !== 'noti-seed-1' && !mockSerials.includes(n.artistSerialNumber || '');
+      });
+
   return (
     <div className="min-h-screen bg-[#F9FAFB] text-gray-900 flex flex-col font-sans selection:bg-indigo-100 selection:text-indigo-950" id="application-root-container">
       {/* OAuth Error Alert overlay if any */}
@@ -554,7 +561,7 @@ export default function App() {
               <MyPage
                 currentUser={currentUser}
                 onUpdateUser={handleUpdateUser}
-                notifications={notifications}
+                notifications={displayedNotifications}
                 onAddNotification={handleAddNotification}
                 artists={displayedArtists}
               />
