@@ -1,8 +1,29 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 
 async function startServer() {
+  // Create .env file dynamically on start to pass process.env to Vite client
+  try {
+    const envLines = [];
+    if (process.env.VITE_SUPABASE_URL) {
+      envLines.push(`VITE_SUPABASE_URL=${process.env.VITE_SUPABASE_URL}`);
+    }
+    if (process.env.VITE_SUPABASE_ANON_KEY) {
+      envLines.push(`VITE_SUPABASE_ANON_KEY=${process.env.VITE_SUPABASE_ANON_KEY}`);
+    }
+    if (process.env.VITE_BACKEND_URL) {
+      envLines.push(`VITE_BACKEND_URL=${process.env.VITE_BACKEND_URL}`);
+    }
+    if (envLines.length > 0) {
+      fs.writeFileSync(path.join(process.cwd(), '.env'), envLines.join('\n'));
+      console.log('Successfully generated .env file from process.env');
+    }
+  } catch (err) {
+    console.error('Failed to write .env file:', err);
+  }
+
   const app = express();
   const PORT = 3000;
 

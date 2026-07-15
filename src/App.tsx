@@ -345,7 +345,7 @@ export default function App() {
           id: p.kakao_id,
           nickname: p.nickname,
           email: `${p.nickname.replace(/\s+/g, '')}@kakao.com`,
-          profileImage: p.profile_image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+          profileImage: p.profile_image_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
           role: p.role,
           serialNumber: writersMap.get(p.id) || undefined,
           uploadedFiles: appInfo.uploadedFiles || [],
@@ -532,7 +532,8 @@ export default function App() {
         upsertProfile({
           kakao_id: updatedUser.id,
           nickname: updatedUser.nickname,
-          role: updatedUser.role
+          role: updatedUser.role,
+          profile_image_url: updatedUser.profileImage
         }).catch(err => console.error('Failed to sync updated user to Supabase:', err));
       }
     } else {
@@ -805,7 +806,8 @@ export default function App() {
                 await upsertProfile({
                   kakao_id: updatedUser.id,
                   nickname: updatedUser.nickname,
-                  role: updatedUser.role
+                  role: updatedUser.role,
+                  profile_image_url: updatedUser.profileImage
                 });
               }
             } catch (sbErr) {

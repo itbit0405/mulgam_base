@@ -42,7 +42,7 @@ export async function getProfileByKakaoId(kakaoId: string) {
   }
 }
 
-export async function upsertProfile(profile: { id?: string; kakao_id: string; nickname: string; role: string }) {
+export async function upsertProfile(profile: { id?: string; kakao_id: string; nickname: string; role: string; profile_image_url?: string }) {
   if (!supabase) return null;
   try {
     // If id (uuid) is not provided, we can look up if profile already exists or let database auto-generate/use auth.uid
@@ -55,6 +55,7 @@ export async function upsertProfile(profile: { id?: string; kakao_id: string; ni
       kakao_id: profile.kakao_id,
       nickname: profile.nickname,
       role: finalRole,
+      profile_image_url: profile.profile_image_url || null,
       ...(existing?.id ? { id: existing.id } : (profile.id ? { id: profile.id } : {}))
     };
 
