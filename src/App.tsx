@@ -389,10 +389,10 @@ export default function App() {
 
   // Sync users list on mount
   useEffect(() => {
-    if (isSupabaseConfigured) {
+    if (supabaseConfig.isConfigured) {
       syncUsersListWithSupabase();
     }
-  }, []);
+  }, [supabaseConfig.isConfigured]);
 
   // Load persistent user data, users list and notifications from localStorage on mount
   useEffect(() => {
@@ -454,7 +454,7 @@ export default function App() {
         }
 
         // Auto-sync fresh profile from Supabase if configured
-        if (isSupabaseConfigured) {
+        if (supabaseConfig.isConfigured) {
           getProfileByKakaoId(active.id).then(async sbProfile => {
             if (sbProfile) {
               const updatedUser: User = {
@@ -465,9 +465,10 @@ export default function App() {
 
               // Retrieve serial number for artist
               if (updatedUser.role === 'artist') {
-                const { supabase } = await import('./supabaseClient');
-                if (supabase) {
-                  const { data: writerData } = await supabase
+                const { getSupabaseClient } = await import('./supabaseClient');
+                const client = getSupabaseClient();
+                if (client) {
+                  const { data: writerData } = await client
                     .from('writers')
                     .select('serial_number')
                     .eq('id', sbProfile.id)
