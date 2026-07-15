@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const rawSupabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+// Clean up URL if it has /rest/v1 or trailing slashes
+const supabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
@@ -24,7 +26,7 @@ export async function getProfileByKakaoId(kakaoId: string) {
   if (!supabase) return null;
   try {
     const { data, error } = await supabase
-      .from('PROFILES')
+      .from('profiles')
       .select('*')
       .eq('kakao_id', kakaoId)
       .maybeSingle();
@@ -57,7 +59,7 @@ export async function upsertProfile(profile: { id?: string; kakao_id: string; ni
     };
 
     const { data, error } = await supabase
-      .from('PROFILES')
+      .from('profiles')
       .upsert(payload, { onConflict: 'kakao_id' })
       .select()
       .single();
@@ -98,9 +100,9 @@ export async function submitWriterApplication(userId: string, description: strin
       }
     }
 
-    // Insert into WRITER_APPLICATIONS
+    // Insert into writer_applications
     const { data: appData, error: appError } = await supabase
-      .from('WRITER_APPLICATIONS')
+      .from('writer_applications')
       .insert({
         user_id: profileUuid,
         status: 'pending'
@@ -122,7 +124,7 @@ export async function submitWriterApplication(userId: string, description: strin
       }));
 
       const { error: filesError } = await supabase
-        .from('APPLICATION_FILES')
+        .from('application_files')
         .insert(filesPayload);
 
       if (filesError) {
@@ -132,7 +134,7 @@ export async function submitWriterApplication(userId: string, description: strin
 
     // Optional: Update bio/description in PROFILE
     await supabase
-      .from('PROFILES')
+      .from('profiles')
       .update({ description })
       .eq('id', profileUuid);
 
@@ -147,11 +149,11 @@ export async function getWriterApplications() {
   if (!supabase) return [];
   try {
     const { data, error } = await supabase
-      .from('WRITER_APPLICATIONS')
+      .from('writer_applications')
       .select(`
         *,
-        PROFILES:user_id (id, nickname, kakao_id),
-        APPLICATION_FILES (id, file_type, file_url)
+        profiles:user_id (id, nickname, kakao_id),
+        application_files (id, file_type, file_url)
       `);
 
     if (error) {
@@ -201,7 +203,7 @@ export async function approveWriterApplication(applicationId: string, userId: st
 
     // 1. Create a row in WRITERS
     const { data: writerData, error: writerError } = await supabase
-      .from('WRITERS')
+      .from('writers')
       .upsert({
         id: profileUuid, // Use UUID
         serial_number: serialNumber,
@@ -217,7 +219,7 @@ export async function approveWriterApplication(applicationId: string, userId: st
 
     // 2. Update WRITER_APPLICATIONS status
     const { error: appUpdateError } = await supabase
-      .from('WRITER_APPLICATIONS')
+      .from('writer_applications')
       .update({
         status: 'approved',
         reviewed_by: adminUuid
@@ -230,7 +232,7 @@ export async function approveWriterApplication(applicationId: string, userId: st
 
     // 3. Update PROFILE role to 'artist'
     const { error: profileUpdateError } = await supabase
-      .from('PROFILES')
+      .from('profiles')
       .update({ role: 'artist' })
       .eq('kakao_id', userId);
 
@@ -249,7 +251,7 @@ export async function registerNfcCard(tagUid: string, writerId: string) {
   if (!supabase) return null;
   try {
     const { data, error } = await supabase
-      .from('NFC_CARDS')
+      .from('nfc_cards')
       .insert({
         tag_uid: tagUid,
         writer_id: writerId
@@ -276,7 +278,7 @@ export async function toggleFavoriteWriter(userId: string, writerId: string, sou
   try {
     // Check if already favorited
     const { data: existing, error: checkError } = await supabase
-      .from('FAVORITES')
+      .from('favorites')
       .select('*')
       .eq('user_id', userId)
       .eq('writer_id', writerId)
@@ -290,7 +292,7 @@ export async function toggleFavoriteWriter(userId: string, writerId: string, sou
     if (existing) {
       // Remove favorite
       const { error: deleteError } = await supabase
-        .from('FAVORITES')
+        .from('favorites')
         .delete()
         .eq('id', existing.id);
 
@@ -302,7 +304,7 @@ export async function toggleFavoriteWriter(userId: string, writerId: string, sou
     } else {
       // Add favorite
       const { data, error: insertError } = await supabase
-        .from('FAVORITES')
+        .from('favorites')
         .insert({
           user_id: userId,
           writer_id: writerId,
@@ -327,13 +329,13 @@ export async function getFavoritesByUser(userId: string) {
   if (!supabase) return [];
   try {
     const { data, error } = await supabase
-      .from('FAVORITES')
+      .from('favorites')
       .select(`
         *,
-        WRITERS:writer_id (
+        writers:writer_id (
           id,
           serial_number,
-          PROFILES:id (nickname, profile_image)
+          profiles:id (nickname, profile_image)
         )
       `)
       .eq('user_id', userId);

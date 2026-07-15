@@ -184,7 +184,7 @@ export default function App() {
                 const { supabase } = await import('./supabaseClient');
                 if (supabase && loggedInUser.role === 'artist') {
                   const { data: writerData } = await supabase
-                    .from('WRITERS')
+                    .from('writers')
                     .select('serial_number')
                     .eq('id', sbProfile.id)
                     .maybeSingle();
@@ -300,16 +300,16 @@ export default function App() {
       const { supabase, getWriterApplications } = await import('./supabaseClient');
       if (!supabase) return;
 
-      // 1. Fetch all PROFILES
+      // 1. Fetch all profiles
       const { data: profiles, error: pError } = await supabase
-        .from('PROFILES')
+        .from('profiles')
         .select('*');
 
       if (pError) throw pError;
 
-      // 2. Fetch all WRITERS
+      // 2. Fetch all writers
       const { data: writers, error: wError } = await supabase
-        .from('WRITERS')
+        .from('writers')
         .select('*');
 
       if (wError) throw wError;
@@ -461,7 +461,7 @@ export default function App() {
                 const { supabase } = await import('./supabaseClient');
                 if (supabase) {
                   const { data: writerData } = await supabase
-                    .from('WRITERS')
+                    .from('writers')
                     .select('serial_number')
                     .eq('id', sbProfile.id)
                     .maybeSingle();
@@ -793,7 +793,7 @@ export default function App() {
                 const { supabase } = await import('./supabaseClient');
                 if (supabase && updatedUser.role === 'artist') {
                   const { data: writerData } = await supabase
-                    .from('WRITERS')
+                    .from('writers')
                     .select('serial_number')
                     .eq('id', sbProfile.id)
                     .maybeSingle();

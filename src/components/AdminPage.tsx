@@ -150,13 +150,13 @@ export default function AdminPage({ currentUser, usersList, onUpdateUsersList, o
               }
             }
 
-            await supabase.from('WRITERS').upsert({
+            await supabase.from('writers').upsert({
               id: profileUuid,
               serial_number: generatedSerial,
               approved_at: new Date().toISOString()
             }, { onConflict: 'id' });
 
-            await supabase.from('PROFILES').update({ role: 'artist' }).eq('kakao_id', approvingUser.id);
+            await supabase.from('profiles').update({ role: 'artist' }).eq('kakao_id', approvingUser.id);
             console.log('Directly promoted and synced artist to Supabase.');
           }
         }
