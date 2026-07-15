@@ -14,7 +14,8 @@ import AdminPage from './components/AdminPage';
 import KakaoLoginModal from './components/KakaoLoginModal';
 import StateController from './components/StateController';
 import { INITIAL_ALL_USERS, MOCK_ARTISTS, MOCK_USER_FANS } from './data';
-import { isSupabaseConfigured, upsertProfile, getProfileByKakaoId } from './supabaseClient';
+import { getSupabaseConfig, upsertProfile, getProfileByKakaoId } from './supabaseClient';
+import SupabaseSettingsModal from './components/SupabaseSettingsModal';
 
 const INITIAL_NOTIFICATIONS: ExhibitionNotification[] = [
   {
@@ -40,6 +41,12 @@ export default function App() {
   const [pendingNfcTag, setPendingNfcTag] = useState<string | null>(null);
   const [oauthProcessing, setOauthProcessing] = useState(false);
   const [oauthError, setOauthError] = useState<string | null>(null);
+  const [supabaseConfig, setSupabaseConfig] = useState(() => getSupabaseConfig());
+  const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
+
+  const handleSupabaseConfigSave = () => {
+    setSupabaseConfig(getSupabaseConfig());
+  };
 
   // Handle client-side OAuth callback (e.g. on Vercel at /oauth or locally/container at /auth/callback)
   useEffect(() => {
@@ -169,7 +176,7 @@ export default function App() {
           }
 
           // Sync/load fresh profile from Supabase first to preserve elevated roles (artist, admin)
-          if (isSupabaseConfigured) {
+          if (supabaseConfig.isConfigured) {
             try {
               const sbProfile = await getProfileByKakaoId(loggedInUser.id);
               if (sbProfile) {
@@ -295,7 +302,7 @@ export default function App() {
   }, [currentUser, usersList]);
 
   const syncUsersListWithSupabase = async () => {
-    if (!isSupabaseConfigured) return;
+    if (!supabaseConfig.isConfigured) return;
     try {
       const { supabase, getWriterApplications } = await import('./supabaseClient');
       if (!supabase) return;
@@ -528,7 +535,7 @@ export default function App() {
       localStorage.setItem('nfc_platform_all_users', JSON.stringify(updatedList));
 
       // Asynchronously sync profile changes with Supabase if configured
-      if (isSupabaseConfigured) {
+      if (supabaseConfig.isConfigured) {
         upsertProfile({
           kakao_id: updatedUser.id,
           nickname: updatedUser.nickname,
@@ -554,7 +561,7 @@ export default function App() {
     setUsersList(finalMerged);
     localStorage.setItem('nfc_platform_all_users', JSON.stringify(finalMerged));
 
-    if (isSupabaseConfigured) {
+    if (supabaseConfig.isConfigured) {
       syncUsersListWithSupabase().catch(err => console.error('Failed to sync users list:', err));
     }
 
@@ -674,6 +681,8 @@ export default function App() {
         }}
         onOpenLogin={() => setIsLoginModalOpen(true)}
         onLogout={handleLogout}
+        supabaseConfig={supabaseConfig}
+        onOpenSupabaseSettings={() => setIsSupabaseModalOpen(true)}
       />
 
       {/* Main Viewport Content Area with graceful tab animations */}
@@ -779,7 +788,7 @@ export default function App() {
             } : {})
           };
 
-          if (isSupabaseConfigured) {
+          if (supabaseConfig.isConfigured) {
             try {
               const sbProfile = await getProfileByKakaoId(user.id);
               if (sbProfile) {
@@ -840,7 +849,7 @@ export default function App() {
           }
           
           handleUpdateUser(updatedUser);
-          if (isSupabaseConfigured) {
+          if (supabaseConfig.isConfigured) {
             syncUsersListWithSupabase().catch(err => console.error('Failed to sync users list after login:', err));
           }
           if (updatedUser.role === 'admin') {
@@ -880,6 +889,13 @@ export default function App() {
             handleLogout();
           }
         }}
+      />
+
+      {/* Supabase Connection Modal */}
+      <SupabaseSettingsModal
+        isOpen={isSupabaseModalOpen}
+        onClose={() => setIsSupabaseModalOpen(false)}
+        onSaveSuccess={handleSupabaseConfigSave}
       />
     </div>
   );

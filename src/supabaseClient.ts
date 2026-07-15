@@ -1,31 +1,51 @@
 import { createClient } from '@supabase/supabase-js';
 
-const rawSupabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-// Clean up URL if it has /rest/v1 or trailing slashes
-const supabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-
-export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
-
-if (!isSupabaseConfigured) {
-  console.warn(
-    '⚠️ Supabase is not fully configured. Please define VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment/Vercel settings.\n' +
-    'The application will fall back to local browser state for preview.'
-  );
+// Get current Supabase configuration dynamically (supporting localStorage override)
+export function getSupabaseConfig() {
+  const localUrl = localStorage.getItem('CUSTOM_SUPABASE_URL') || '';
+  const localKey = localStorage.getItem('CUSTOM_SUPABASE_ANON_KEY') || '';
+  
+  const envUrl = import.meta.env.VITE_SUPABASE_URL || '';
+  const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+  
+  const finalUrl = (localUrl || envUrl).trim();
+  const cleanedUrl = finalUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+  const finalKey = (localKey || envKey).trim();
+  
+  return {
+    url: cleanedUrl,
+    key: finalKey,
+    isConfigured: !!(cleanedUrl && finalKey),
+    source: localUrl ? 'local' : (envUrl ? 'env' : 'none')
+  };
 }
 
-// Lazy initializer for supabase client to prevent crashing on missing keys
-export const supabase = isSupabaseConfigured 
-  ? createClient(supabaseUrl, supabaseAnonKey) 
-  : null;
+// Keep export variable for backward compatibility but allow checking dynamic state too
+export const isSupabaseConfigured = !!getSupabaseConfig().isConfigured;
+
+// Dynamic client provider that works instantly when localStorage credentials are saved
+export function getSupabaseClient() {
+  const config = getSupabaseConfig();
+  if (!config.isConfigured) return null;
+  try {
+    return createClient(config.url, config.key);
+  } catch (err) {
+    console.error('Failed to create Supabase client:', err);
+    return null;
+  }
+}
+
+// For backward compatibility (lazy or initial client)
+export const supabase = getSupabaseClient();
 
 /**
  * 1. PROFILES Table Helpers
  */
 export async function getProfileByKakaoId(kakaoId: string) {
-  if (!supabase) return null;
+  const client = getSupabaseClient();
+  if (!client) return null;
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('profiles')
       .select('*')
       .eq('kakao_id', kakaoId)
@@ -43,7 +63,8 @@ export async function getProfileByKakaoId(kakaoId: string) {
 }
 
 export async function upsertProfile(profile: { id?: string; kakao_id: string; nickname: string; role: string; profile_image_url?: string }) {
-  if (!supabase) return null;
+  const client = getSupabaseClient();
+  if (!client) return null;
   try {
     // If id (uuid) is not provided, we can look up if profile already exists or let database auto-generate/use auth.uid
     const existing = await getProfileByKakaoId(profile.kakao_id);
@@ -59,7 +80,7 @@ export async function upsertProfile(profile: { id?: string; kakao_id: string; ni
       ...(existing?.id ? { id: existing.id } : (profile.id ? { id: profile.id } : {}))
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('profiles')
       .upsert(payload, { onConflict: 'kakao_id' })
       .select()
@@ -80,7 +101,8 @@ export async function upsertProfile(profile: { id?: string; kakao_id: string; ni
  * 2. WRITER_APPLICATIONS & APPLICATION_FILES Table Helpers
  */
 export async function submitWriterApplication(userId: string, description: string, files: { file_type: string; file_url: string }[]) {
-  if (!supabase) return null;
+  const client = getSupabaseClient();
+  if (!client) return null;
   try {
     // Resolve UUID for userId (which might be Kakao ID)
     let profileUuid = userId;
@@ -102,7 +124,7 @@ export async function submitWriterApplication(userId: string, description: strin
     }
 
     // Insert into writer_applications
-    const { data: appData, error: appError } = await supabase
+    const { data: appData, error: appError } = await client
       .from('writer_applications')
       .insert({
         user_id: profileUuid,
@@ -124,7 +146,7 @@ export async function submitWriterApplication(userId: string, description: strin
         file_url: file.file_url
       }));
 
-      const { error: filesError } = await supabase
+      const { error: filesError } = await client
         .from('application_files')
         .insert(filesPayload);
 
@@ -134,7 +156,7 @@ export async function submitWriterApplication(userId: string, description: strin
     }
 
     // Optional: Update bio/description in PROFILE
-    await supabase
+    await client
       .from('profiles')
       .update({ description })
       .eq('id', profileUuid);
@@ -147,9 +169,10 @@ export async function submitWriterApplication(userId: string, description: strin
 }
 
 export async function getWriterApplications() {
-  if (!supabase) return [];
+  const client = getSupabaseClient();
+  if (!client) return [];
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('writer_applications')
       .select(`
         *,
@@ -172,7 +195,8 @@ export async function getWriterApplications() {
  * 3. WRITERS & NFC_CARDS Table Helpers
  */
 export async function approveWriterApplication(applicationId: string, userId: string, serialNumber: string, adminId: string) {
-  if (!supabase) return false;
+  const client = getSupabaseClient();
+  if (!client) return false;
   try {
     // Resolve UUID for userId (which might be Kakao ID)
     let profileUuid = userId;
@@ -203,7 +227,7 @@ export async function approveWriterApplication(applicationId: string, userId: st
     }
 
     // 1. Create a row in WRITERS
-    const { data: writerData, error: writerError } = await supabase
+    const { data: writerData, error: writerError } = await client
       .from('writers')
       .upsert({
         id: profileUuid, // Use UUID
@@ -219,7 +243,7 @@ export async function approveWriterApplication(applicationId: string, userId: st
     }
 
     // 2. Update WRITER_APPLICATIONS status
-    const { error: appUpdateError } = await supabase
+    const { error: appUpdateError } = await client
       .from('writer_applications')
       .update({
         status: 'approved',
@@ -232,7 +256,7 @@ export async function approveWriterApplication(applicationId: string, userId: st
     }
 
     // 3. Update PROFILE role to 'artist'
-    const { error: profileUpdateError } = await supabase
+    const { error: profileUpdateError } = await client
       .from('profiles')
       .update({ role: 'artist' })
       .eq('kakao_id', userId);
@@ -249,9 +273,10 @@ export async function approveWriterApplication(applicationId: string, userId: st
 }
 
 export async function registerNfcCard(tagUid: string, writerId: string) {
-  if (!supabase) return null;
+  const client = getSupabaseClient();
+  if (!client) return null;
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('nfc_cards')
       .insert({
         tag_uid: tagUid,
@@ -275,10 +300,11 @@ export async function registerNfcCard(tagUid: string, writerId: string) {
  * 4. FAVORITES Table Helpers
  */
 export async function toggleFavoriteWriter(userId: string, writerId: string, source: string = 'web') {
-  if (!supabase) return null;
+  const client = getSupabaseClient();
+  if (!client) return null;
   try {
     // Check if already favorited
-    const { data: existing, error: checkError } = await supabase
+    const { data: existing, error: checkError } = await client
       .from('favorites')
       .select('*')
       .eq('user_id', userId)
@@ -292,7 +318,7 @@ export async function toggleFavoriteWriter(userId: string, writerId: string, sou
 
     if (existing) {
       // Remove favorite
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await client
         .from('favorites')
         .delete()
         .eq('id', existing.id);
@@ -304,7 +330,7 @@ export async function toggleFavoriteWriter(userId: string, writerId: string, sou
       return { action: 'removed', id: existing.id };
     } else {
       // Add favorite
-      const { data, error: insertError } = await supabase
+      const { data, error: insertError } = await client
         .from('favorites')
         .insert({
           user_id: userId,
@@ -327,9 +353,10 @@ export async function toggleFavoriteWriter(userId: string, writerId: string, sou
 }
 
 export async function getFavoritesByUser(userId: string) {
-  if (!supabase) return [];
+  const client = getSupabaseClient();
+  if (!client) return [];
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('favorites')
       .select(`
         *,

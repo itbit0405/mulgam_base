@@ -9,9 +9,11 @@ interface NavbarProps {
   setActiveTab: (tab: 'intro' | 'download' | 'mypage' | 'admin' | 'admin_users' | 'admin_artists') => void;
   onOpenLogin: () => void;
   onLogout: () => void;
+  supabaseConfig?: { isConfigured: boolean; url: string; source: string };
+  onOpenSupabaseSettings?: () => void;
 }
 
-export default function Navbar({ currentUser, activeTab, setActiveTab, onOpenLogin, onLogout }: NavbarProps) {
+export default function Navbar({ currentUser, activeTab, setActiveTab, onOpenLogin, onLogout, supabaseConfig, onOpenSupabaseSettings }: NavbarProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -78,6 +80,20 @@ export default function Navbar({ currentUser, activeTab, setActiveTab, onOpenLog
               id="nav-tab-download"
             >
               앱 다운로드
+            </button>
+
+            {/* Supabase Connection Indicator */}
+            <button
+              onClick={onOpenSupabaseSettings}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                supabaseConfig?.isConfigured
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300'
+                  : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100 hover:border-red-300 animate-pulse'
+              }`}
+              id="supabase-status-indicator-btn"
+            >
+              <span className={`w-2.5 h-2.5 rounded-full ${supabaseConfig?.isConfigured ? 'bg-emerald-500 shadow-sm shadow-emerald-400' : 'bg-red-500 shadow-sm shadow-red-400'}`}></span>
+              {supabaseConfig?.isConfigured ? 'Supabase 연동 완료' : 'Supabase 연결 필요 (클릭)'}
             </button>
 
             {/* Profile / Dropdown */}
@@ -241,6 +257,23 @@ export default function Navbar({ currentUser, activeTab, setActiveTab, onOpenLog
                 }`}
               >
                 앱 다운로드
+              </button>
+
+              {/* Mobile Supabase Connection Indicator */}
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  onOpenSupabaseSettings?.();
+                }}
+                className={`flex items-center gap-2.5 w-full text-left py-2.5 px-3.5 text-xs font-bold rounded-xl border transition-all ${
+                  supabaseConfig?.isConfigured
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                    : 'bg-red-50 text-red-700 border-red-100 animate-pulse'
+                }`}
+                id="mobile-supabase-status-indicator-btn"
+              >
+                <span className={`w-2.5 h-2.5 rounded-full ${supabaseConfig?.isConfigured ? 'bg-emerald-500 shadow-sm shadow-emerald-300' : 'bg-red-500 shadow-sm shadow-red-300'}`}></span>
+                {supabaseConfig?.isConfigured ? 'Supabase 연동 상태: 연결됨' : 'Supabase 연결 필요 (직접 설정)'}
               </button>
 
               {currentUser ? (
