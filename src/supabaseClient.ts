@@ -62,6 +62,17 @@ export async function getProfileByKakaoId(kakaoId: string) {
   }
 }
 
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export async function upsertProfile(profile: { id?: string; kakao_id: string; nickname: string; role: string; profile_image_url?: string }) {
   const client = getSupabaseClient();
   if (!client) return null;
@@ -72,12 +83,14 @@ export async function upsertProfile(profile: { id?: string; kakao_id: string; ni
     if (existing && existing.role && existing.role !== 'user') {
       finalRole = existing.role;
     }
+    
+    // Always provide an ID to bypass missing default database constraints
     const payload = {
+      id: existing?.id || profile.id || generateUUID(),
       kakao_id: profile.kakao_id,
       nickname: profile.nickname,
       role: finalRole,
-      profile_image_url: profile.profile_image_url || null,
-      ...(existing?.id ? { id: existing.id } : (profile.id ? { id: profile.id } : {}))
+      profile_image_url: profile.profile_image_url || null
     };
 
     const { data, error } = await client
